@@ -24,16 +24,20 @@ printf "
 
 LET'S START ${bold}PLANTING${normal}!
 This is a shell script that aims to setup and/or maintain your Mac.
-The script will ${green}install${reset}, ${blue}update${reset}, ${blue}backup${reset}, ${blue}restore${reset}, or ${yellow}skip${reset} packages.
+The script will ${green}install${reset}, ${blue}update${reset}, ${purple}backup${reset}, ${red}restore${reset}, or ${yellow}skip${reset} packages.
 
 ----
-
 ${bold}System Info:${normal}
-${dim}OS: $(get_os) $(get_os_version) ${normal} // Shell: ${dim}$BASH ${normal} // Shell Version: ${dim}$BASH_VERSION${reset}
+// OS: ${dim}$(get_os) ${normal} // OS Version: ${dim}$(get_os_version) ${normal} // Shell: ${dim}$BASH ${normal} // Shell Version: ${dim}$BASH_VERSION${reset}
 
 ${dim}Copyright © 2020 | Mathew Teague.${normal}
+
 "
 
+heading "Checking internet connection…"
+check_internet_connection
+
+# cecho "Have you read through the script you're about to run and " $red
 
 #open https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg
 

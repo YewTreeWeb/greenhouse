@@ -7,9 +7,15 @@ reset="\033[0m"
 highlight="\033[41m\033[97m"
 dot="\033[31m▸ $reset"
 dim="\033[2m"
-blue="\e[34m"
-green="\e[32m"
-yellow="\e[33m"
+black=$(tput setaf 0)
+purple="\033[1;35m"
+red=$(tput setaf 1)
+green=$(tput setaf 2)
+yellow=$(tput setaf 3)
+blue=$(tput setaf 4)
+magenta=$(tput setaf 5)
+cyan=$(tput setaf 6)
+white=$(tput setaf 7)
 tag_green="\e[30;42m"
 tag_blue="\e[30;46m"
 bold=$(tput bold)
@@ -17,7 +23,77 @@ normal=$(tput sgr0)
 underline="\e[37;4m"
 indent="   "
 
+internet=false
+
 # Get full directory name of this script
 cwd="$(cd "$(dirname "$0")" && pwd)"
 
-DOTFILES_ROOT=$HOME/.dotfiles
+cecho() {
+  echo "${2}${1}${reset}"
+  return
+}
+
+### System checks ###
+check_bash_version() {
+    if ((BASH_VERSINFO[0] < 3))
+    then
+        print_error "Sorry, you need at least bash-3.0 to run this script."
+        exit 1
+    fi
+}
+
+get_os() {
+
+    local os=""
+    local kernelName=""
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    kernelName="$(uname -s)"
+
+    if [ "$kernelName" == "Darwin" ]; then
+        os="macOS"
+    elif [ "$kernelName" == "Linux" ] && [ -e "/etc/lsb-release" ]; then
+        os="ubuntu"
+    else
+        os="$kernelName"
+    fi
+
+    printf "%s" "$os"
+
+}
+
+get_os_version() {
+
+    local os=""
+    local version=""
+
+    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    os="$(get_os)"
+
+    if [ "$os" == "macOS" ]; then
+        version="$(sw_vers -productVersion)"
+    elif [ "$os" == "ubuntu" ]; then
+        version="$(lsb_release -d | cut -f2 | cut -d' ' -f2)"
+    fi
+
+    printf "%s" "$version"
+
+}
+
+check_internet_connection() {
+    if [ ping -q -w1 -c1 google.com &>/dev/null ]; then
+        cecho "No internet found! Please check your internet connection." $red
+        exit 0
+    else
+        cecho "You have an internet connection!" $green
+        internet=true
+    fi
+}
+
+heading() {
+    local head="$1"; shift
+    cecho "\n  ${bold}$((count++)). $head${normal}\n ─────────────────────────────────────────────────────\n" $white
+}
+
