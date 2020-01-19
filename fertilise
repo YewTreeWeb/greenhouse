@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 ### Variables ###
+
 count=1
 
 reset="\033[0m"
@@ -28,12 +29,20 @@ internet=false
 # Get full directory name of this script
 cwd="$(cd "$(dirname "$0")" && pwd)"
 
+### Text Formatting ###
+
 cecho() {
   echo "${2}${1}${reset}"
   return
 }
 
+heading() {
+    local head="$1"; shift
+    cecho "\n  ${bold}$((count++)). $head${normal}\n ─────────────────────────────────────────────────────\n" $white
+}
+
 ### System checks ###
+
 check_bash_version() {
     if ((BASH_VERSINFO[0] < 3))
     then
@@ -78,8 +87,23 @@ get_os_version() {
         version="$(lsb_release -d | cut -f2 | cut -d' ' -f2)"
     fi
 
-    printf "%s" "$version"
+    echo $version
 
+}
+
+check_macos_version() {
+    local catalina="10.15"
+
+    mac="$(get_os)"
+    version="$(get_os_version)"
+
+    if [ $mac == "macOS" ]; then
+        if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
+            cecho "I'm Catalina" $purple
+        else
+            cecho "I'm old!" $blue
+        fi
+    fi
 }
 
 check_internet_connection() {
@@ -92,8 +116,20 @@ check_internet_connection() {
     fi
 }
 
-heading() {
-    local head="$1"; shift
-    cecho "\n  ${bold}$((count++)). $head${normal}\n ─────────────────────────────────────────────────────\n" $white
+admin_pass() {
+    # Ask for the administrator password upfront.
+
+    sudo -v &> /dev/null
+
+    # Update existing `sudo` time stamp
+    # until this script has finished.
+    #
+    # https://gist.github.com/cowboy/3118588
+
+    # Keep-alive: update existing `sudo` time stamp until script has finished
+    while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+
+    cecho "Password cached to " $green
+
 }
 

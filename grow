@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ### ERROR: display error if script failure. ###
-trap 'ret=$?; test $ret -ne 0 && printf "\n   \e[31m\033[0m  Germination failed  \e[31m\033[0m\n" >&2; exit $ret' EXIT
+trap 'ret=$?; test $ret -ne 0 && printf "\n   ⛔️\e\033[0;31m  Germination failed!! \e\033[0m ⛔️\n" >&2; exit $ret' EXIT
 
 set -e
 
@@ -10,7 +10,7 @@ if [ -e fertilise ]; then
 	cd "$(dirname "${BASH_SOURCE[0]}")" \
 		&& . "fertilise"
 else
-	printf "\n ⚠️  ./fertilise not found.\n"
+	printf "\n ⚠️ ./fertilise not found.\n"
 	exit 1
 fi
 
@@ -31,13 +31,61 @@ ${bold}System Info:${normal}
 // OS: ${dim}$(get_os) ${normal} // OS Version: ${dim}$(get_os_version) ${normal} // Shell: ${dim}$BASH ${normal} // Shell Version: ${dim}$BASH_VERSION${reset}
 
 ${dim}Copyright © 2020 | Mathew Teague.${normal}
+----
 
+\n
 "
 
-heading "Checking internet connection…"
+
+## Pre-install checks
+heading "Checking your internet connection…"
 check_internet_connection
 
-# cecho "Have you read through the script you're about to run and " $red
+# heading "Admin password"
+# admin_pass
+if [ ! -f "$HOME/greenhouse/shell.log" ]; then
+	echo "Which shell would you like to us? b/z"
+	read shell
+	touch greenhouse/shell.log
+	if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
+		if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
+			chsh -s /bin/bash
+			echo "bash" > ${HOME}/greenhouse/shell.log
+		else
+			chsh -s /bin/zsh
+			echo "zsh" > ${HOME}/greenhouse/shell.log
+		fi
+	else
+		if [[ $shell =~ ^([zZ][zshZSH]|[zZ])$ ]]; then
+			echo "install zsh"
+			echo "zsh" >> ${HOME}/greenhouse/shell.log
+		fi
+	fi
+else
+	printf "It looks like you have a shell environment set. Would you like to change it? y/N"
+	read shellChange
+	if [[ $shellChange =~ ^([yY])$ ]]; then
+		if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
+			if [[ if shell.log has zsh ]]; then
+				chsh -s /bin/bash
+				echo "bash" > ${HOME}/greenhouse/shell.log
+			else
+				chsh -s /bin/zsh
+				echo "zsh" > ${HOME}/greenhouse/shell.log
+			fi
+		else
+			if [[ if shell.log has bash ]]; then
+				echo "install zsh"
+				echo "zsh" >> ${HOME}/greenhouse/shell.log
+			else
+				echo "uninstall zsh"
+				echo "bash" >> ${HOME}/greenhouse/shell.log
+			fi
+		fi
+	else
+		cecho "Shell already configured. Skipping." $dim
+	fi
+fi
 
 #open https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg
 
