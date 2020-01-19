@@ -14,7 +14,7 @@ else
 	exit 1
 fi
 
-### Run Script ###
+### Run Inital Script ###
 
 printf "
   ___  ____  ____  __  __  ____  _  _    __   ____  ____ 
@@ -24,12 +24,16 @@ printf "
 
 LET'S START ${bold}PLANTING${normal}!
 This is a shell script that aims to setup and/or maintain your Mac.
-The script will ${green}install${reset}, ${blue}upgrade${reset}, or ${yellow}skip${reset} packages based
-on what is already installed on the machine.
+The script will ${green}install${reset}, ${blue}update${reset}, ${blue}backup${reset}, ${blue}restore${reset}, or ${yellow}skip${reset} packages.
 
+----
+
+${bold}System Info:${normal}
 ${dim}OS: $(get_os) $(get_os_version) ${normal} // Shell: ${dim}$BASH ${normal} // Shell Version: ${dim}$BASH_VERSION${reset}
+
 ${dim}Copyright © 2020 | Mathew Teague.${normal}
 "
+
 
 #open https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg
 

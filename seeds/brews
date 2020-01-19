@@ -4,8 +4,10 @@ argon2
 aspell
 autoconf
 automake
+boost
 brotli
 c-ares
+cmake
 coreutils
 curl-openssl
 dnsmasq
@@ -56,7 +58,6 @@ openssl@1.1
 pcre
 pcre2
 php
-php@7.1
 pkg-config
 protobuf@3.7
 pyenv
