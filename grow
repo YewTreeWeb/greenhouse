@@ -17,10 +17,12 @@ fi
 ### Run Inital Script ###
 
 printf "
-  ___  ____  ____  __  __  ____  _  _    __   ____  ____ 
- / __)( ___)(  _ \(  \/  )(_  _)( \( )  /__\ (_  _)( ___)
-( (_-. )__)  )   / )    (  _)(_  )  (  /(__)\  )(   )__) 
- \___/(____)(_)\_)(_/\/\_)(____)(_)\_)(__)(__)(__) (____)
+
+  ____                     _   _                      
+ / ___|_ __ ___  ___ _ __ | | | | ___  _   _ ___  ___ 
+| |  _| '__/ _ \/ _ \ '_ \| |_| |/ _ \| | | / __|/ _ \
+| |_| | | |  __/  __/ | | |  _  | (_) | |_| \__ \  __/
+ \____|_|  \___|\___|_| |_|_| |_|\___/ \__,_|___/\___|
 
 LET'S START ${bold}PLANTING${normal}!
 This is a shell script that aims to setup and/or maintain your Mac.
@@ -32,60 +34,97 @@ ${bold}System Info:${normal}
 
 ${dim}Copyright © 2020 | Mathew Teague.${normal}
 ----
-
-\n
 "
-
-
-## Pre-install checks
+## Pre-install checks.
 heading "Checking your internet connection…"
 check_internet_connection
 
-# heading "Admin password"
-# admin_pass
-if [ ! -f "$HOME/greenhouse/shell.log" ]; then
-	echo "Which shell would you like to us? b/z"
-	read shell
-	touch greenhouse/shell.log
-	if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
-		if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
-			chsh -s /bin/bash
-			echo "bash" > ${HOME}/greenhouse/shell.log
-		else
-			chsh -s /bin/zsh
-			echo "zsh" > ${HOME}/greenhouse/shell.log
-		fi
-	else
-		if [[ $shell =~ ^([zZ][zshZSH]|[zZ])$ ]]; then
-			echo "install zsh"
-			echo "zsh" >> ${HOME}/greenhouse/shell.log
-		fi
-	fi
-else
-	printf "It looks like you have a shell environment set. Would you like to change it? y/N"
-	read shellChange
-	if [[ $shellChange =~ ^([yY])$ ]]; then
-		if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
-			if [[ if shell.log has zsh ]]; then
+## Ask user for choice.
+heading "What would you like to plant? 🌱"
+printf "
+${bold}1) ${normal}${white}Setup Mac ${reset}
+${bold}2) ${normal}${white}Update ${reset}
+${bold}3) ${normal}${white}Backup ${reset}
+${bold}4) ${normal}${white}Restore ${reset}
+"
+read choice
+
+case $choice in
+	1)
+		## Cache sudo password.
+		heading "Let's start by getting your admin password"
+		admin_pass
+		## Installing shell enviornment.
+		heading "Setting up the Shell environment"
+		if [ ! -f $tmp ]; then
+			echo "Which shell would you like to us? b/z "
+			read shell
+			touch $tmp
+			if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
 				chsh -s /bin/bash
-				echo "bash" > ${HOME}/greenhouse/shell.log
+				echo "bash" > $tmp
+				cecho "Shell set to Bash." $green
+				printf '\n'
 			else
-				chsh -s /bin/zsh
-				echo "zsh" > ${HOME}/greenhouse/shell.log
+				if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
+					chsh -s /bin/zsh
+					echo "zsh" > $tmp
+				else
+					brew install zsh
+					sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+					chsh -s $(which zsh)
+					echo "zsh" > ${HOME}/storage/shell.log
+				fi
+				cecho "Shell set to ZSH." $green
+				printf '\n'
 			fi
 		else
-			if [[ if shell.log has bash ]]; then
-				echo "install zsh"
-				echo "zsh" >> ${HOME}/greenhouse/shell.log
+			printf "It looks like you have a shell environment set. Would you like to change it? y/N "
+			read shellChange
+			if [[ $shellChange =~ ^([yY])$ ]]; then
+				if [ grep -Fxq "zsh" $tmp ]; then
+					chsh -s /bin/bash
+					echo "bash" > $tmp
+					cecho "Shell environment changed to Bash." $yellow
+					printf '\n'
+				else
+					if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
+						chsh -s /bin/zsh
+						echo "zsh" > $tmp
+					else
+						brew install zsh
+						sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+						chsh -s $(which zsh)
+						echo "zsh" > $tmp
+					fi
+					cecho "Shell environment changed to ZSH." $yellow
+					printf '\n'
+				fi
 			else
-				echo "uninstall zsh"
-				echo "bash" >> ${HOME}/greenhouse/shell.log
+				cecho "Shell already configured. Skipping." $dim
+				printf '\n'
 			fi
 		fi
-	else
-		cecho "Shell already configured. Skipping." $dim
-	fi
-fi
+		cecho "All seeds are sown. May the plants be ever in your favour." $green
+		;;
+	2)
+		echo 'Updating'
+		update-packages
+		cecho "All pruned and weeded." $green
+		;;
+	3)
+		echo 'Backing up'
+		cecho "Safely stored for the Winter." $green
+		;;
+	4)
+		echo 'Restoring'
+		cecho "It's been a long winter but let's get those plants flowring again." $green
+		;;
+	*)
+		printf "Thank you for using GreenHouse. Have a lovely sunny day and may the plants be ever in your favour.\n"
+		exit
+		;;
+esac
 
 #open https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg
 
