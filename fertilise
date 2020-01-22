@@ -35,19 +35,30 @@ tmp='storage/shell.log'
 
 ### Text Formatting ###
 
+# Display outputted text in a chosen colour.
 cecho() {
     echo "${2}${1}${reset}"
     return
 }
 
+# Create a formatted heading in the terminal.
 heading() {
-    local head="$1"
-    shift
+    local head="$1"; shift
     cecho "\n  ${bold}$((count++)). $head${normal}\n ─────────────────────────────────────────────────────\n" $white
+}
+
+installing() {
+    local install="$1"; shift
+    printf "  [↓] $install " "$@"
+}
+
+step() {
+    printf "\n   ${dot}${underline}$@${reset}\n"
 }
 
 ### System checks ###
 
+# Get the current bash version running.
 check_bash_version() {
     if ((BASH_VERSINFO[0] < 3)); then
         print_error "Sorry, you need at least bash-3.0 to run this script."
@@ -55,12 +66,11 @@ check_bash_version() {
     fi
 }
 
+# Get and display the system's OS.
 get_os() {
 
     local os=""
     local kernelName=""
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     kernelName="$(uname -s)"
 
@@ -76,12 +86,11 @@ get_os() {
 
 }
 
+# Get the current version of the system's OS.
 get_os_version() {
 
     local os=""
     local version=""
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     os="$(get_os)"
 
@@ -95,21 +104,7 @@ get_os_version() {
 
 }
 
-check_macos_version() {
-    local catalina="10.15"
-
-    mac="$(get_os)"
-    version="$(get_os_version)"
-
-    if [ $mac == "macOS" ]; then
-        if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
-            cecho "I'm Catalina" $purple
-        else
-            cecho "I'm old!" $blue
-        fi
-    fi
-}
-
+# Check if the current session has access to the internet.
 check_internet_connection() {
     if [ ping -q -w1 -c1 google.com ] &>/dev/null; then
         cecho "No internet found! Please check your internet connection." $red
@@ -120,6 +115,7 @@ check_internet_connection() {
     fi
 }
 
+# Cache the sudo password.
 admin_pass() {
     # Ask for the administrator password upfront.
 
@@ -137,106 +133,6 @@ admin_pass() {
         kill -0 "$$" || exit
     done 2>/dev/null &
 
-    cecho "Password cached to " $green
+    cecho "Password cached to system." $green
 
-}
-
-### Misc Functions ###
-# Update your package managers including NPM, Homebrew, Yarn, Ruby Gems and Composer.
-# Use the flag -g to update global packages.
-# Usage: update-packages npm -g
-function update-packages() {
-    local package="${1:-0}"
-
-    if [ $package == 'node' ]; then
-        sudo npm cache clean -f
-        sudo npm install -g n
-        sudo n stable
-        sudo chown -R $(whoami):admin ~/.npm
-        sudo chown -R $(whoami):admin ~/.config
-    elif [ $package == 'npm' ]; then
-        npm i -g npm
-        npm update -g
-    elif [ $package == 'yarn' ]; then
-        yarn global upgrade
-    elif [ $package == 'gem' ]; then
-        gem update
-    elif [ $package == 'wp' ]; then
-        wp cli update
-    elif [ $package == 'ruby' ]; then
-        brew upgrade rbenv ruby-build
-        rbenv install $(rbenv install -l | grep -v - | tail -1)
-        rbenv local $(rbenv install -l | grep -v - | tail -1)
-    elif [ $package == 'brew' ]; then
-        brew update
-        brew upgrade
-        brew cleanup
-        brew cask cleanup
-    elif [ $package == 'composer' ]; then
-        composer selfupdate
-        composer global upgrade
-    elif [ $package == 'all' ]; then
-        cecho "###" $dim
-        printf "\n"
-        cecho "Warning: This will update everything including Node! Continue update y/N " $dim
-        printf "\n"
-        cecho "###" $dim
-        read everything
-        if [ $everything == 'y' ] || [ $everything == 'Y' ]; then
-            cecho '### Updating Brew. ###' $dim
-            printf "\n"
-            brew update
-            brew upgrade
-            brew cleanup
-            brew cask cleanup
-            cecho '### Updating Ruby Gems. ###' $dim
-            printf "\n"
-            gem update
-            cecho '### Updating Composer and Composer packages. ###' $dim
-            printf "\n"
-            composer selfupdate
-            composer global upgrade
-            cecho '### Updating WP-CLI. ###' $dim
-            printf "\n"
-            wp cli update
-            cecho '### Updating Node and NPM. ###' $dim
-            printf "\n"
-            echo '// Now clearing Node cache.'
-            sudo npm cache clean -f
-            echo '// Now starting Node upgrade.'
-            sudo npm i -g n
-            sudo n stable
-            sudo chown -R $(whoami):admin ~/.npm
-            sudo chown -R $(whoami):admin ~/.config
-            cecho '// Starting NPM upgrade.' $dim
-            npm i -g npm
-            npm update -g
-            cecho '### Updating Ruby. ###' $dim
-            printf "\n"
-            brew upgrade rbenv ruby-build
-            rbenv install $(rbenv install -l | grep -v - | tail -1)
-            rbenv local $(rbenv install -l | grep -v - | tail -1)
-            printf "###\n"
-            printf "\n"
-            cecho "Success: All your systems development environments and packages have been updated!" $green
-            printf "\n"
-            printf "###\n"
-        fi
-    else
-        cecho "###" $dim
-        printf "\n"
-        cecho "Upgrading packages with default options." $dim
-        printf "\n"
-        cecho "###" $dim
-        brew update
-        brew upgrade
-        brew cleanup
-        brew cask cleanup
-        npm i -g npm
-        npm update -g
-        gem update
-        composer selfupdate
-        composer global upgrade
-        wp cli update
-    fi
 }
