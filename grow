@@ -181,10 +181,10 @@ else
 			if [ -e $cwd/seeds/brews ]; then
 				step "Installing Homebrew formulaes..."
 
-				if [[ test $(which brew) ]];
+				if [ test "$(which brew)" ];
 				then
 					for brew in $(<$cwd/seeds/brews); do
-						if test ! $(brew list | grep $brew); then
+						if test ! "$(brew list | grep $brew)"; then
 							installing "Installing $brew"
 							brew install $brew >/dev/null
 							cecho "${bold}✓ Formula installed${normal}\n" $green
@@ -205,7 +205,57 @@ else
 			cecho "All pruned and weeded." $green
 			;;
 		3)
-			echo 'Backing up'
+			##############################
+			# Backing Up #
+			##############################
+			heading "Backing up packages and apps"
+
+			# Save brew formulaes to log file.
+			if test ! "$(brew list)"; then
+				cecho "Unable to backup Homebrew formulaes. Please check your Homebrew installation." $red
+			else 
+				step "Backing up formulaes..."
+				brew list | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> storage/brews.log
+				cecho "Successfully backed up all Homebrew formulaes." $green
+			fi
+
+			# Save brew casks to log file.
+			if [[ ! $(brew cask list) ]]; then
+				cecho "Unable to backup Homebrew casks. Please check your Homebrew installation." $red
+			else
+				step "Backing up casks..."
+				brew cask list | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> storage/brewcasks.log
+				cecho "Successfully backed up all Homebrew casks." $green
+			fi
+
+			# Save gems to log file.
+			if test ! "$(gem list)"; then
+				cecho "Unable to backup Ruby gems." $red
+			else
+				step "Backing up gems..."
+				gem list --no-versions >> storage/gems.log
+				cecho "Successfully backed up all gems." $green
+			fi
+
+			# Save npm modules to log file.
+			# todo: if npm directory exists and if node is installed.
+			step "Backing up npm modules..."
+			npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> storage/npm.log
+			cecho "Successfully backed up all npm modules." $green
+
+			# Take a copy of composer.json
+			# todo: if .composer directory exists and if composer is installed.
+			step "Backing up composer packages..."
+			cp ~/.composer/composer.json storage/composer.json
+			cecho "Successfully backed up all packages." $green
+			
+			# Take a copy of wp-cli packages
+			# todo: if .wp-cli directory exists and if wp-cli is installed.
+			step "Backing up wp-cli plugins..."
+			cp ~/.wp-cli/packages/composer.json storage/wp-cli.json
+			cecho "Successfully backed up all plugins." $green
+
+			printf '\n'
 			cecho "Safely stored for the Winter." $green
 			printf '\n'
 			;;
