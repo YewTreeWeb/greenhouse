@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env
 
 ### ERROR: display error if script failure. ###
 trap 'ret=$?; test $ret -ne 0 && printf "\n   ⛔️\e\033[0;31m  Germination failed!! \e\033[0m ⛔️\n" >&2; exit $ret' EXIT
@@ -16,14 +16,15 @@ fi
 
 ### Run Inital Script ###
 
-printf "
-
+printf "${green}
   ____                     _   _                      
  / ___|_ __ ___  ___ _ __ | | | | ___  _   _ ___  ___ 
 | |  _| '__/ _ \/ _ \ '_ \| |_| |/ _ \| | | / __|/ _ \
 | |_| | | |  __/  __/ | | |  _  | (_) | |_| \__ \  __/
  \____|_|  \___|\___|_| |_|_| |_|\___/ \__,_|___/\___|
+${normal}"
 
+printf "
 LET'S START ${bold}PLANTING${normal}!
 This is a shell script that aims to setup and/or maintain your Mac.
 The script will ${green}install${reset}, ${blue}update${reset}, ${purple}backup${reset}, ${red}restore${reset}, or ${yellow}skip${reset} packages.
@@ -34,58 +35,99 @@ ${bold}System Info:${normal}
 
 ${dim}Copyright © 2020 | Mathew Teague.${normal}
 ----
+\n
 "
-## Pre-install checks.
+
+##############################
+# Pre-install check. #
+##############################
 heading "Checking your internet connection…"
 check_internet_connection
 
-## Ask user for choice.
+##############################
+# Ask user for command #
+##############################
 heading "What would you like to plant? 🌱"
 printf "
-${bold}1) ${normal}${white}Setup Mac ${reset}
-${bold}2) ${normal}${white}Update ${reset}
-${bold}3) ${normal}${white}Backup ${reset}
-${bold}4) ${normal}${white}Restore ${reset}
+ ${bold}1) ${normal}Setup Mac
+ ${bold}2) ${normal}Update
+ ${bold}3) ${normal}Backup
+ ${bold}4) ${normal}Restore
+\n
 "
-read choice
+read -n 1 -s -r -p "> " choice
 
-case $choice in
-	1)
-		## Cache sudo password.
-		heading "Let's start by getting your admin password"
-		admin_pass
-		## Installing shell enviornment.
-		heading "Setting up the Shell environment"
-		if [ ! -f $tmp ]; then
-			echo "Which shell would you like to us? b/z "
-			read shell
-			touch $tmp
-			if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
-				chsh -s /bin/bash
-				echo "bash" > $tmp
-				cecho "Shell set to Bash." $green
-				printf '\n'
+if [[ $choice = '' ]]; then
+	exit;
+else
+	##############################
+	# Ask for and cache sudo password #
+	##############################
+	heading "Let's start by getting your admin password"
+	admin_pass
+	case $choice in
+		1)
+			##############################
+			# Install dependencies #
+			##############################
+			heading "Install System Dependencies…"
+
+			# Check if xcode is installed. If not install it.
+			if type xcode-select >&- && xpath=$( xcode-select --print-path ) &&
+				test -d "${xpath}" && test -x "${xpath}" ; then
+				cecho "Xcode already installed. Skipping..." $dim
 			else
-				if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
-					chsh -s /bin/zsh
-					echo "zsh" > $tmp
-				else
-					brew install zsh
-					sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
-					chsh -s $(which zsh)
-					echo "zsh" > ${HOME}/storage/shell.log
-				fi
-				cecho "Shell set to ZSH." $green
-				printf '\n'
+				step "Installing Xcode..."
+				xcode-select --install
+				cecho "Xcode successfully installed." $green
 			fi
-		else
-			printf "It looks like you have a shell environment set. Would you like to change it? y/N "
-			read shellChange
-			if [[ $shellChange =~ ^([yY])$ ]]; then
-				if [ grep -Fxq "zsh" $tmp ]; then
+
+			# Check if system bin folder exists.
+			if [ ! -d "$HOME/.bin/" ]; then
+				mkdir "$HOME/.bin"
+			fi
+
+			# Check if system sbin folder exists.
+			if [ ! -d "$HOME/.sbin/" ]; then
+				mkdir "$HOME/.sbin"
+			fi
+
+			# Check for Brew installation.
+			if [ test ! $(which brew) ];
+			then
+				step "Installing Homebrew..."
+				## Don't prompt for confirmation when installing homebrew
+				/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
+				cecho "Homebrew successfully installed." $green
+			else
+				cecho "Homebrew already installed. Skipping..." $dim
+			fi
+
+			# Install NVM to manage Node.
+			if [ -x nvm ]; then
+				step "Installing NVM..."
+				curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.2/install.sh | bash
+				cecho "NVM has been installed." $white
+				step "Installing latest Node..."
+				nvm install node
+				nvm use node
+				nvm run node --version
+				nodeVersion=$(node -v)
+				cecho "Successfully installed NVM and Node. Now using Node version: $nodeVersion" $green
+			else
+				cecho "NVM or Node has already been installed. Skipping..." $dim
+			fi
+
+			# Installing shell enviornment.
+			step "Setting up the Shell environment..."
+			if [ ! -f $tmp ]; then
+				printf "Which shell would you like to us? b/z "
+				read shell
+				touch $tmp
+				if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
 					chsh -s /bin/bash
 					echo "bash" > $tmp
-					cecho "Shell environment changed to Bash." $yellow
+					cecho "Shell set to Bash." $green
 					printf '\n'
 				else
 					if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
@@ -95,36 +137,75 @@ case $choice in
 						brew install zsh
 						sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
 						chsh -s $(which zsh)
-						echo "zsh" > $tmp
+						echo "zsh" > ${HOME}/storage/shell.log
 					fi
-					cecho "Shell environment changed to ZSH." $yellow
+					cecho "Shell set to ZSH." $green
 					printf '\n'
 				fi
 			else
-				cecho "Shell already configured. Skipping." $dim
-				printf '\n'
+				printf "It looks like you have a shell environment set. Would you like to change it? y/N "
+				read shellChange
+				if [[ $shellChange =~ ^([yY])$ ]]; then
+					if [ grep -Fxq "zsh" $tmp ]; then
+						chsh -s /bin/bash
+						echo "bash" > $tmp
+						cecho "Shell environment changed to Bash." $yellow
+						printf '\n'
+					else
+						if [ "$(printf '%s\n' "$catalina" "$version" | sort -V | head -n1)" = "$catalina" ]; then
+							chsh -s /bin/zsh
+							echo "zsh" > $tmp
+						else
+							brew install zsh
+							sh -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+							chsh -s $(which zsh)
+							echo "zsh" > $tmp
+						fi
+						cecho "Shell environment changed to ZSH." $yellow
+						printf '\n'
+					fi
+				else
+					cecho "Shell already configured. Skipping..." $dim
+					printf '\n'
+				fi
 			fi
-		fi
-		cecho "All seeds are sown. May the plants be ever in your favour." $green
-		;;
-	2)
-		echo 'Updating'
-		update-packages
-		cecho "All pruned and weeded." $green
-		;;
-	3)
-		echo 'Backing up'
-		cecho "Safely stored for the Winter." $green
-		;;
-	4)
-		echo 'Restoring'
-		cecho "It's been a long winter but let's get those plants flowring again." $green
-		;;
-	*)
-		printf "Thank you for using GreenHouse. Have a lovely sunny day and may the plants be ever in your favour.\n"
-		exit
-		;;
-esac
+
+			##############################
+			# Install Brews #
+			##############################
+			heading "Installing Homebrew brews"
+			if [ -e $cwd/seeds/brews ]; then
+				step "Installing Homebrew formulaes..."
+
+				for brew in $(<$cwd/seeds/brews); do
+					install_brews $brew
+				done
+			fi
+
+			cecho "All seeds are sown. May the plants be ever in your favour." $green
+			printf '\n'
+			;;
+		2)
+			echo 'Updating'
+			cecho "All pruned and weeded." $green
+			;;
+		3)
+			echo 'Backing up'
+			cecho "Safely stored for the Winter." $green
+			printf '\n'
+			;;
+		4)
+			echo 'Restoring'
+			cecho "It's been a long winter but let's get those plants flowring again." $green
+			printf '\n'
+			;;
+		*)
+			printf "Thank you for using GreenHouse. Have a lovely sunny day and may the plants be ever in your favour.\n"
+			printf '\n'
+			exit;
+			;;
+	esac
+fi
 
 #open https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg
 
