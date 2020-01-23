@@ -41,7 +41,7 @@ ${dim}Copyright © 2020 | Mathew Teague.${normal}
 ##############################
 # Pre-install check. #
 ##############################
-heading "Checking your internet connection…"
+heading "Checking your internet connection..."
 check_internet_connection
 
 ##############################
