@@ -1,4 +1,3 @@
-
 adobe-acrobat-reader
 amazon-music
 amazon-photos
@@ -11,6 +10,12 @@ docker
 dropbox
 expressvpn
 firefox
+font-fira-code
+font-fira-mono-for-powerline
+font-source-code-pro
+font-source-code-pro-for-powerline
+font-source-sans-pro
+font-source-serif-pro
 google-backup-and-sync
 google-chrome
 grammarly
@@ -29,6 +34,7 @@ nucleo
 opera
 postman
 remembear
+sequel-pro
 sip
 sketch
 sketchpacks

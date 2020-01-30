@@ -39,12 +39,14 @@ n
 netlify-cli
 npm
 npm-clean
-on-shopify-cli
+shopify-cli
 parcel-bundler
 prettier
 quickshot
 sassdoc
 stylus
 typescript
+webpack
+webpack-cli
 workbox-cli
 yo

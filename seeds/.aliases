@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Easier navigation: .., ..., ...., ....., ~ and -
 alias ..="cd .."
@@ -14,6 +14,18 @@ alias dl="cd ~/Downloads"
 alias dt="cd ~/Desktop"
 alias p="cd ~/projects"
 alias g="git"
+alias sites='cd ~/Sites'
+alias designs='cd ~/Designs'
+alias backup='cd ~/Sites/backup'
+alias wordpress='cd ~/Sites/WordPress'
+alias shopify='cd ~/Sites/Shopify'
+alias static='cd ~/Sites/Static'
+alias hyde='cd ~/Sites/Jekyll'
+alias mysql='mysql -uroot' # Start MySQL
+alias profile='code ~/.bash_profile'
+alias restart-profile='source ~/.bash_profile'
+alias refresh='source ~/.bash_profile'
+alias c='clear'
 
 # Detect which `ls` flavor is in use
 if ls --color > /dev/null 2>&1; then # GNU `ls`
@@ -64,7 +76,7 @@ alias ips="ifconfig -a | grep -o 'inet6\? \(addr:\)\?\s\?\(\(\([0-9]\+\.\)\{3\}[
 alias ifactive="ifconfig | pcregrep -M -o '^[^\t:]+:([^\n]|\n\t)*status: active'"
 
 # Flush Directory Service cache
-alias flush="dscacheutil -flushcache && killall -HUP mDNSResponder"
+alias flush="dscacheutil -flushcache && sudo killall -HUP mDNSResponder"
 
 # Clean up LaunchServices to remove duplicates in the “Open With” menu
 alias lscleanup="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user && killall Finder"
@@ -84,7 +96,7 @@ jscbin="/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources
 unset jscbin;
 
 # Trim new lines and copy to clipboard
-alias c="tr -d '\n' | pbcopy"
+alias tcopy="tr -d '\n' | pbcopy"
 
 # Recursively delete `.DS_Store` files
 alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"

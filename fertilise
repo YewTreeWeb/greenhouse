@@ -24,14 +24,19 @@ normal=$(tput sgr0)
 underline="\e[37;4m"
 indent="   "
 
+sierra=10.12.2
+catalina=10.15
+
 internet=false
+
+env=null
 
 # Get full directory name of this script
 cwd="$(cd "$(dirname "$0")" && pwd)"
 
 # Home location
-home='${HOME}/greenhouse/'
-tmp='storage/shell.log'
+# location='${HOME}/greenhouse/'
+location='${PWD}'
 
 ### Text Formatting ###
 
@@ -134,5 +139,72 @@ admin_pass() {
     done 2>/dev/null &
 
     cecho "Password cached to system." $green
+
+}
+
+### Misc ###
+create_ssh_config() {
+touch ~/.ssh/config
+cat <<EOT >> ~/.ssh/config
+	Host *
+		AddKeysToAgent yes
+		UseKeychain yes
+        ForwardAgent yes
+        IdentitiesOnly yes
+        IdentityFile ~/.ssh/id_rsa
+EOT
+}
+
+setup_nvm() {
+local shellEnv=''
+
+if [ $(grep "zsh" $location/storage/shell.log) ]; then
+    shellEnv='~/.zsh_modules/.exports'
+else
+    shellEnv='~/.bash_modules/.exports'
+fi
+
+if [ ! $(grep "nvm" $location/seeds/brews) ];
+then
+cat <<EOT >> $shellEnv
+# NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+export PATH="$HOME/.npm-packages/bin:$PATH"
+EOT
+else
+cat <<EOT >> $shellEnv
+# NVM
+export NVM_DIR=~/.nvm
+export PATH="$HOME/.npm-packages/bin:$PATH"
+source $(brew --prefix nvm)/nvm.sh
+EOT
+fi
+
+}
+
+install_with_yarn() {
+
+local shellEnv=''
+
+if [ $(grep "zsh" $location/storage/shell.log) ]; then
+    shellEnv='~/.zsh_modules/.exports'
+else
+    shellEnv='~/.bash_modules/.exports'
+fi
+
+cat <<EOT >> $shellEnv
+export PATH="$(yarn global bin):$PATH"
+EOT
+
+}
+
+supress_zsh_warning() {
+
+cat <<EOT >> ~/.bash_profile/.exports
+# Supress zsh warning
+export BASH_SILENCE_DEPRECATION_WARNING=1
+EOT
 
 }

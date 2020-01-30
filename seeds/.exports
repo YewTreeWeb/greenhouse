@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 # Make vim the default editor.
 export EDITOR='vim';
@@ -32,3 +32,28 @@ export MANPAGER='less -X';
 # Avoid issues with `gpg` as installed via Homebrew.
 # https://stackoverflow.com/a/42265848/96656
 export GPG_TTY=$(tty);
+
+# Git branch in prompt.
+parse_git_branch() {
+	git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+}
+export PS1="\u@\h \W\[\033[32m\]\$(parse_git_branch)\[\033[00m\] $ "
+
+# Add Homebrew's executable directory to the front of the PATH
+export PATH="/usr/local/bin:$PATH"
+
+# Composer
+export PATH=~/.composer/vendor/bin:$PATH
+
+# sbin
+export PATH="/usr/local/sbin:$PATH"
+
+export PATH="/usr/local/opt/libpq/bin:$PATH"
+export PATH="/usr/local/opt/icu4c/bin:$PATH"
+export PATH="/usr/local/opt/icu4c/sbin:$PATH"
+export PATH="/usr/local/opt/apr-util/bin:$PATH"
+export PATH="/usr/local/opt/apr/bin:$PATH"
+export PATH="/usr/local/opt/sqlite/bin:$PATH"
+
+# Ruby
+eval "$(rbenv init -)"
