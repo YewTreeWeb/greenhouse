@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ### Variables ###
 
@@ -26,6 +26,7 @@ indent="   "
 
 sierra=10.12.2
 catalina=10.15
+version=""
 
 internet=false
 
@@ -37,6 +38,9 @@ cwd="$(cd "$(dirname "$0")" && pwd)"
 # Home location
 # location='${HOME}/greenhouse/'
 location='${PWD}'
+
+# Shell environment variables
+shellExports='$HOME/.shell_modules/.exports'
 
 ### Text Formatting ###
 
@@ -95,18 +99,13 @@ get_os() {
 get_os_version() {
 
     local os=""
-    local version=""
-
     os="$(get_os)"
 
     if [ "$os" == "macOS" ]; then
         version="$(sw_vers -productVersion)"
-    elif [ "$os" == "ubuntu" ]; then
-        version="$(lsb_release -d | cut -f2 | cut -d' ' -f2)"
     fi
 
     echo $version
-
 }
 
 # Check if the current session has access to the internet.
@@ -156,45 +155,23 @@ EOT
 }
 
 setup_nvm() {
-local shellEnv=''
 
-if [ $(grep "zsh" $location/storage/shell.log) ]; then
-    shellEnv='~/.zsh_modules/.exports'
-else
-    shellEnv='~/.bash_modules/.exports'
-fi
-
-if [ ! $(grep "nvm" $location/seeds/brews) ];
-then
-cat <<EOT >> $shellEnv
+cat <<EOT >> $shellExports
 # NVM
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+NVM_HOMEBREW="/usr/local/opt/nvm/nvm.sh"
+[ -s "$NVM_HOMEBREW" ] && \. "$NVM_HOMEBREW"
+
 export PATH="$HOME/.npm-packages/bin:$PATH"
+
+[ -x "$(command -v npm)" ] && export NODE_PATH=$NODE_PATH:`npm root -g`
 EOT
-else
-cat <<EOT >> $shellEnv
-# NVM
-export NVM_DIR=~/.nvm
-export PATH="$HOME/.npm-packages/bin:$PATH"
-source $(brew --prefix nvm)/nvm.sh
-EOT
-fi
 
 }
 
 install_with_yarn() {
 
-local shellEnv=''
-
-if [ $(grep "zsh" $location/storage/shell.log) ]; then
-    shellEnv='~/.zsh_modules/.exports'
-else
-    shellEnv='~/.bash_modules/.exports'
-fi
-
-cat <<EOT >> $shellEnv
+cat <<EOT >> $shellExports
 export PATH="$(yarn global bin):$PATH"
 EOT
 
@@ -202,9 +179,26 @@ EOT
 
 supress_zsh_warning() {
 
-cat <<EOT >> ~/.bash_profile/.exports
+cat <<EOT >> $shellExports
 # Supress zsh warning
 export BASH_SILENCE_DEPRECATION_WARNING=1
 EOT
 
+}
+
+fix_php_memory() {
+    local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
+    local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
+
+    if [ -d "/usr/local/etc/php/$phpVersion/" ];
+    then
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
+    fi
+
+    if [ -d "/usr/local/etc/php/$phpShortVersion/" ];
+    then
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
+    fi
 }

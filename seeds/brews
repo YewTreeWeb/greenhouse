@@ -17,6 +17,8 @@ gdbm
 gettext
 git
 glib
+git-extras
+git-flow
 git-lfs
 gmp
 hub
@@ -25,6 +27,7 @@ ispell
 jansson
 jemalloc
 jpeg
+legit
 less
 libev
 libevent
@@ -62,7 +65,6 @@ pkg-config
 protobuf@3.7
 pyenv
 python
-python@2
 rbenv
 readline
 rtmpdump

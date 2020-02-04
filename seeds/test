@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# ~/.macos — https://mths.be/macos
+
+echo "testing"
