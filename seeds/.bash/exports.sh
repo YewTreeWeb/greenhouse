@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Make vim the default editor.
 export EDITOR='vim';
@@ -56,5 +56,11 @@ export PATH="/usr/local/opt/apr/bin:$PATH"
 export PATH="/usr/local/opt/sqlite/bin:$PATH"
 
 # Ruby
+export PATH="$HOME/.rbenv/bin:$PATH"
 export RUBY_CONFIGURE_OPTS="--with-openssl-dir=$(brew --prefix openssl@1.1)"
 eval "$(rbenv init -)"
+
+# To opt in to Homebrew analytics, `unset` this.
+# Learn more about what you are opting in to at
+# https://docs.brew.sh/Analytics
+export HOMEBREW_NO_ANALYTICS=1

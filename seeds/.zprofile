@@ -1,50 +1,53 @@
 # Add `~/bin` to the `$PATH`
 export PATH="$HOME/bin:$PATH";
 
-# Load the shell dotfiles, and then some:
-# * ~/.path can be used to extend `$PATH`.
-# * ~/.extra can be used for other settings you don’t want to commit.
-for file in ~/.zsh_modules/.{path,prompt,exports,aliases,functions,extra}; do
-	[ -r "$file" ] && [ -f "$file" ] && source "$file";
-done;
-unset file;
+# Load the shell dotfiles:
+source $HOME/.zsh/aliases.zsh
+source $HOME/.zsh/functions.zsh
+source $HOME/.zsh/exports.zsh
 
-# Case-insensitive globbing (used in pathname expansion)
-shopt -s nocaseglob;
+# Eval Ruby env.
+eval "$(rbenv init -)"
 
-# Append to the Bash history file, rather than overwriting it
-shopt -s histappend;
+# add ssh keys
+ssh-add -A 2>/dev/null;
 
-# Autocorrect typos in path names when using `cd`
-shopt -s cdspell;
+# ssh keys
+ssh-add -K ~/.ssh/github ~/.ssh/gitlab ~/.ssh/id_rsa ~/.ssh/kubixGitlab ~/.ssh/kubixGithub ~/.ssh/dev ~/.ssh/alice ~/.ssh/kubix && clear
 
-# Enable some Bash 4 features when possible:
-# * `autocd`, e.g. `**/qux` will enter `./foo/bar/baz/qux`
-# * Recursive globbing, e.g. `echo **/*.txt`
-for option in autocd globstar; do
-	shopt -s "$option" 2> /dev/null;
-done;
+# Starship
+eval "$(starship init zsh)"
 
-# Add tab completion for many Bash commands
-if which brew &> /dev/null && [ -r "$(brew --prefix)/etc/profile.d/bash_completion.sh" ]; then
-	# Ensure existing Homebrew v1 completions continue to work
-	export BASH_COMPLETION_COMPAT_DIR="$(brew --prefix)/etc/bash_completion.d";
-	source "$(brew --prefix)/etc/profile.d/bash_completion.sh";
-elif [ -f /etc/bash_completion ]; then
-	source /etc/bash_completion;
-fi;
+# Enable 'fast-syntax-highlighting' plugin in ZSH
+source $HOME/.zsh/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
+
+# Enable 'completion' plugin in ZSH
+source $HOME/.zsh/completion.zsh
+
+# Initialize the completion system
+autoload -Uz compinit
+
+# Cache completion if nothing changed - faster startup time
+typeset -i updated_at=$(date +'%j' -r ~/.zcompdump 2>/dev/null || stat -f '%Sm' -t '%j' ~/.zcompdump 2>/dev/null)
+if [ $(date +'%j') != $updated_at ]; then
+  compinit -i
+else
+  compinit -C -i
+fi
+
+# Enhanced form of menu completion called `menu selection'
+zmodload -i zsh/complist
 
 # Enable tab completion for `g` by marking it as an alias for `git`
 if type _git &> /dev/null; then
 	complete -o default -o nospace -F _git g;
 fi;
 
-# Add tab completion for SSH hostnames based on ~/.ssh/config, ignoring wildcards
-[ -e "$HOME/.ssh/config" ] && complete -o "default" -o "nospace" -W "$(grep "^Host" ~/.ssh/config | grep -v "[?*]" | cut -d " " -f2- | tr ' ' '\n')" scp sftp ssh;
+# Enable 'zsh-autosuggestions' plugin in ZSH
+source $HOME/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
 
-# Add tab completion for `defaults read|write NSGlobalDomain`
-# You could just use `-g` instead, but I like being explicit
-complete -W "NSGlobalDomain" defaults;
+# Enable 'history' config in ZSH
+source $HOME/.zsh/history.zsh
 
-# Add `killall` tab completion for common apps
-complete -o "nospace" -W "Contacts Calendar Dock Finder Mail Safari iTunes SystemUIServer Terminal Twitter" killall;
+# Enable 'key-bindings' config in ZSH
+source $HOME/.zsh/key-bindings.zsh

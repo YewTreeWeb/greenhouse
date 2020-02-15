@@ -99,6 +99,7 @@ progressbar
 psych
 public_suffix
 rack
+rails
 rainbow
 rake
 rb-fsevent

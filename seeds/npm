@@ -50,4 +50,5 @@ webpack
 webpack-cli
 workbox-cli
 vuepress
+yarn-upgrade-all
 yo

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Create a new directory and enter it
 function mkd() {
@@ -168,4 +168,26 @@ function o() {
 # small enough for one screen.
 function tre() {
 	tree -aC -I '.git|node_modules|bower_components' --dirsfirst "$@" | less -FRNX;
+}
+
+# SSH files to remote sever
+# -r will tells the function to SSH directory
+function transfer() {
+	local file="${1:-0}"
+	local site="${2:-0}"
+	local dest="${3:-0}"
+	local flag="${4:-0}"
+
+	if [ $flag == '-r' ]; # transfer directory
+	then
+		scp -r $1 $2@ssh.stackcp.com:"${3}"
+	else  
+		scp $1 $2@ssh.stackcp.com:"${3}"
+	fi
+}
+
+# Change Shell ENV
+function changeshell() {
+  local shell="${*:-0}"
+  sudo chsh -s "/usr/local/bin/$shell" "$USER"
 }

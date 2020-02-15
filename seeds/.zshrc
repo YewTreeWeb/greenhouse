@@ -1,1 +1,2 @@
-[ -n "$PS1" ] && source ~/.profile;
+# Reference zprofile
+[ -n "$PS1" ] && source ~/.zprofile;
