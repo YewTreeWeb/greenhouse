@@ -180,31 +180,38 @@ else
 			if [ $(grep "zsh" $location/storage/shell.log) ]; then
 				step "Copying ZSH files..."
 				cp $location/seeds/.zprofile $HOME
+				# Check if zsh module folder exists.
+				if [ ! -d "$HOME/.zsh/" ]; then
+					mkdir $HOME/.zsh
+					cp $location/seeds/.zsh/aliases.zsh $HOME/.zsh
+					cp $location/seeds/.zsh/exports.zsh $HOME/.zsh
+					cp $location/seeds/.zsh/functions.zsh $HOME/.zsh
+					# Check if .extra file exists and add it to the system modules folder.
+					if [ -f "$location/seeds/.zsh/extra.zsh" ]; then
+						cp $location/seeds/.zsh/extra.zsh $HOME/.zsh
+					fi
+					
+					install_zsh_dependecies
+				fi
 			else
 				step "Copying Bash files..."
 				cp $location/seeds/.bash_profile $HOME
-
 				# Check if system module folder exists.
-				if [ ! -d "$HOME/.modules/" ]; then
-					mkdir $HOME/.shell_modules
+				if [ ! -d "$HOME/.bash/" ]; then
+					mkdir $HOME/.bash
+					cp $location/seeds/.bash/aliases.sh $HOME/.bash
+					cp $location/seeds/.bash/exports.sh $HOME/.bash
+					cp $location/seeds/.bash/functions.sh $HOME/.bash
+					# Check if .extra file exists and add it to the system modules folder.
+					if [ -f "$location/seeds/.bash/extra.sh" ]; then
+						cp $location/seeds/.bash/extra.sh $HOME/.bash
+					fi
 				fi
 
 				# Supress Mac warning to use ZSH.
 				supress_zsh_warning
 			fi
 			
-			# Check if system module folder exists.
-			if [ ! -d "$HOME/.modules/" ]; then
-				mkdir $HOME/.shell_modules
-				cp $location/seeds/.aliases $HOME/.shell_modules
-				cp $location/seeds/.exports $HOME/.shell_modules
-				cp $location/seeds/.functions $HOME/.shell_modules
-				# Check if .extra file exists and add it to the system modules folder.
-				if [ -f "$location/seeds/.extra" ]; then
-					cp $location/seeds/.extra $HOME/.shell_modules
-				fi
-			fi
-
 			# Copy system dotfiles to root.
 			step "Adding other dotfiles..."
 

@@ -36,7 +36,11 @@ location="$(cd "$(dirname "$0")" && pwd)"
 # Shell environment variables
 zshDIR="$(command -v zsh)"
 bashDIR="$(command -v bash)"
-shellExports="$HOME/.shell_modules/.exports"
+if [ $(grep "zsh" $location/storage/shell.log) ]; then
+    shellExports="$HOME/.zsh/exports.zsh"
+else
+    shellExports="$HOME/.bash/exports.sh"
+fi
 
 ### Text Formatting ###
 
@@ -163,8 +167,11 @@ NVM_HOMEBREW="/usr/local/opt/nvm/nvm.sh"
 [ -s "$NVM_HOMEBREW" ] && \. "$NVM_HOMEBREW"
 export PATH="$HOME/.npm-packages/bin:$PATH"
 [ -x "$(command -v npm)" ] && export NODE_PATH=$NODE_PATH:`npm root -g`
-[[ -r $NVM_DIR/bash_completion ]] && \. $NVM_DIR/bash_completion
 EOT
+
+if [ $(grep "bash" $location/storage/shell.log) ]; then
+    echo "[[ -r $NVM_DIR/bash_completion ]] && \. $NVM_DIR/bash_completion" >> $HOME/.bash/exports.sh
+fi
 
 }
 
@@ -267,7 +274,11 @@ fi
 # Create or modify .zshrc
 create_zshrc
 
-zshFiles=$(find $HOME/.zsh/ -mindepth 1 | wc -l)
+echo "zsh" > $location/storage/shell.log
+
+}
+
+install_zsh_dependecies() {
 
 # Clone ZSH dependency repos to `~/.zsh/` directory
 cd $HOME/.zsh
@@ -334,19 +345,6 @@ fi
 
 # Go back to $location
 cd $location
-
-# Check if zsh-completions is installed
-# if test "$(which brew)"
-# then
-#     if test "$(brew info zsh-completions)"
-#     then
-#         cecho "zsh-completions already installed. Skipping..." $dim
-#     else
-#         zsh_completion
-#     fi
-# fi
-
-echo "zsh" > $location/storage/shell.log
 
 }
 
