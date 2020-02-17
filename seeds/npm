@@ -46,6 +46,7 @@ quickshot
 sassdoc
 stylus
 typescript
+vuepress
 webpack
 webpack-cli
 workbox-cli
