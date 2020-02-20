@@ -204,3 +204,6 @@ $RECYCLE.BIN/
 storage/
 
 # End of https://www.gitignore.io/api/macos,windows,linux,node,adobe,git
+
+# Local Netlify folder
+.netlify
