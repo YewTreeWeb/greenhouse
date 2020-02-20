@@ -1,5 +1,7 @@
 This website was created with [Docusaurus](https://docusaurus.io/).
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/0213d1c3-8800-4e36-b9dc-abcab9c98945/deploy-status)](https://app.netlify.com/sites/greenhouse-yewtreeweb/deploys)
+
 # What's In This Document
 
 - [Get Started in 5 Minutes](#get-started-in-5-minutes)
