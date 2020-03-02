@@ -150,7 +150,6 @@ touch ~/.ssh/config
 cat <<EOT >> ~/.ssh/config
 	Host *
 		AddKeysToAgent yes
-		UseKeychain yes
         ForwardAgent yes
         IdentitiesOnly yes
         IdentityFile ~/.ssh/id_rsa

@@ -924,7 +924,7 @@ else
 							brew update
 							brew upgrade
 							brew cask upgrade
-							brew cleanup
+							brew cleanup -s
 							brew cleanup cask
 							if [ -f $HOME/Brewfile ];
 							then
@@ -1023,6 +1023,7 @@ else
 				step "Backing up Homebrew..."
 				brew bundle dump --file=${location}/storage/Brewfile.bkp
 				echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
+				brew cleanup -s
 				brew bundle cleanup
 				cecho "Successfully backed up all Homebrew formulaes, casks and mas installs." $green
 			fi
