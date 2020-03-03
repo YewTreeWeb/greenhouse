@@ -1,5 +1,5 @@
 [build]
-  command = "cd website; npm install; npm run build;"
+  command = "bundle exec jekyll build --config _config.yml, _config.dev.yml"
   publish = "website/build/greenhouse"
 
 [[headers]]
