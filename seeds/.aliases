@@ -1,7 +1,6 @@
-#!/usr/bin/env zsh
+#!/bin/sh
 
 # Easier navigation: .., ..., ...., ....., ~ and -
-alias .="cd"
 alias ..="cd .."
 alias ...="cd ../.."
 alias ....="cd ../../.."
@@ -9,34 +8,24 @@ alias .....="cd ../../../.."
 alias ~="cd ~" # `cd` is probably faster to type though
 alias -- -="cd -"
 
-# source zprofile
-alias refresh='source ~/.zprofile'
-
-# zprofile
-alias profile='code ~/.zprofile'
-
 # Shortcuts
+alias d="cd ~/Documents/Dropbox"
 alias dl="cd ~/Downloads"
 alias dt="cd ~/Desktop"
 alias p="cd ~/projects"
-alias sites='cd ~/Sites'
-alias shopify='cd ~/Sites/shopify'
-alias wordpress='cd ~/Sites/wordpress'
-alias hyde='cd ~/Sites/jekyll'
-alias lara='cd ~/Sites/laravel'
-alias static='cd ~/Sites/static'
-alias designs='cd ~/Designs'
-alias sshFolder="cd ~/.ssh"
 alias g="git"
-
-# create new key
-alias new-ssh="cd ~/.ssh && ssh-keygen -t rsa"
-
-# edit ssh config
-alias ssh-config="code ~/.ssh/config"
-
-# mysql command form MAMP
-alias mysql="mysql -uroot"
+alias sites='cd ~/Sites'
+alias designs='cd ~/Designs'
+alias backup='cd ~/Sites/backup'
+alias wordpress='cd ~/Sites/WordPress'
+alias shopify='cd ~/Sites/Shopify'
+alias static='cd ~/Sites/Static'
+alias hyde='cd ~/Sites/Jekyll'
+alias mysql='mysql -uroot' # Start MySQL
+alias profile='code ~/.bash_profile'
+alias restart-profile='source ~/.bash_profile'
+alias refresh='source ~/.bash_profile'
+alias c='clear'
 
 # Detect which `ls` flavor is in use
 if ls --color > /dev/null 2>&1; then # GNU `ls`
@@ -71,6 +60,9 @@ alias sudo='sudo '
 # Get week number
 alias week='date +%V'
 
+# Get macOS Software Updates, and update installed Ruby gems, Homebrew, npm, and their installed packages
+alias update='sudo softwareupdate -i -a; brew update; brew upgrade; brew cleanup; npm install npm -g; npm update -g; sudo gem update --system; sudo gem update; sudo gem cleanup'
+
 # Google Chrome
 alias chrome='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
 alias canary='/Applications/Google\ Chrome\ Canary.app/Contents/MacOS/Google\ Chrome\ Canary'
@@ -84,7 +76,7 @@ alias ips="ifconfig -a | grep -o 'inet6\? \(addr:\)\?\s\?\(\(\([0-9]\+\.\)\{3\}[
 alias ifactive="ifconfig | pcregrep -M -o '^[^\t:]+:([^\n]|\n\t)*status: active'"
 
 # Flush Directory Service cache
-alias flush="sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder"
+alias flush="dscacheutil -flushcache && sudo killall -HUP mDNSResponder"
 
 # Clean up LaunchServices to remove duplicates in the “Open With” menu
 alias lscleanup="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user && killall Finder"
@@ -104,7 +96,7 @@ jscbin="/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources
 unset jscbin;
 
 # Trim new lines and copy to clipboard
-alias ctrim="tr -d '\n' | pbcopy"
+alias tcopy="tr -d '\n' | pbcopy"
 
 # Recursively delete `.DS_Store` files
 alias cleanup="find . -type f -name '*.DS_Store' -ls -delete"
@@ -166,15 +158,3 @@ alias reload="exec ${SHELL} -l"
 
 # Print each PATH entry on a separate line
 alias path='echo -e ${PATH//:/\\n}'
-
-# wp-cli update
-alias wp-update="wp core update && wp core language update"
-alias wp-asset-update="wp plugin update --all && wp theme update --all"
-alias wp-update-all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
-
-# Clear Terminal
-alias c='clear'
-
-# Git
-alias add="git add ."
-alias status="git status"

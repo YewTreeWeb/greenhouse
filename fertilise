@@ -150,6 +150,7 @@ touch ~/.ssh/config
 cat <<EOT >> ~/.ssh/config
 	Host *
 		AddKeysToAgent yes
+		UseKeychain yes
         ForwardAgent yes
         IdentitiesOnly yes
         IdentityFile ~/.ssh/id_rsa
@@ -220,7 +221,7 @@ brew install zsh-completions
 cat <<EOT >> ~/.zshrc
 # ZSH Completion
 if type brew &>/dev/null; then
-    FPATH=${BREW_PREFIX}/share/zsh/site-functions:$FPATH
+    FPATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
 fi
 EOT
 rm -f ~/.zcompdump; compinit
@@ -397,4 +398,69 @@ fi
 
 echo "bash" > $location/storage/shell.log
 
+}
+
+# Check if system has an SSL if not create it.
+ssl_check() {
+    local ssl="$HOME/.ssl";
+    local ssl_crt="$ssl/server.crt"
+    local ssl_key="$ssl/server.key"
+    
+    local local_ip=$(ipconfig getifaddr $(route get default | grep interface | awk '{print $2}'))
+    # local_ip=999.999.999 # (uncomment for testing)
+    
+    local domains=(
+        "localhost"
+        "*.localhost"
+        "127.0.0.1"
+        "::1"
+        "$local_ip"
+    )
+
+    if test "$(which mkcert)"
+    then
+        step "Installing mkcert local CA..."
+        mkcert -install
+        cecho "CA successfully installed." $green
+    else
+        step "mkcert and nss not installed. Installing..."
+        brew install mkcert nss
+        cecho "mkcert & nss installed." $green
+        printf "\n"
+        step "Installing mkcert local CA..."
+        mkcert -install
+        cecho "CA successfully installed." $green
+    fi
+    
+    if [[ ! -f $ssl_crt ]]; then
+        cecho "Couldn't find an SSL certificate!" $red
+        printf "\n"
+        local make_key=true
+    elif [[ ! $(openssl x509 -noout -text -in $ssl_crt | grep $local_ip) ]]; then
+        cecho "Your IP Address has changed!" $yellow
+        printf "\n"
+        local make_key=true
+    else
+        cecho "SSL certificate found. No need for new SSL. Skipping..." $dim
+        printf "\n"
+    fi
+    
+    if [[ $make_key == true ]]; then
+        step "Generating a new SSL certificate..."
+        local count=$(( ${#domains[@]} - 1))
+        mkcert ${domains[@]}
+    
+        # Create Slate's default certificate directory, if it doesn't exist
+        test ! -d $ssl && mkdir $ssls
+    
+        # It appears mkcert bases its filenames off the number of domains passed after the first one.
+        # This script predicts that filename, so it can copy it to Slate's default location.
+        if [[ $count = 0 ]]; then
+            mv $HOME/localhost.pem $ssl_crt
+            mv $HOME/localhost-key.pem $ssl_key
+        else
+            mv $HOME/localhost+$count.pem $ssl_crt
+            mv $HOME/localhost+$count-key.pem $ssl_key
+        fi
+    fi
 }

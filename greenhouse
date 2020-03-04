@@ -64,1154 +64,1185 @@ printf "
 "
 read -n 1 -s -r -p "> " choice
 
-if [[ $choice = '' ]]; then
-	exit;
-else
-	##############################
-	# Ask for and cache sudo password #
-	##############################
-	heading "Let's start by getting your admin password"
-	admin_pass
-	case $choice in
-		1)
-			##############################
-			# Install dependencies #
-			##############################
-			heading "Installing System Dependencies…"
+##############################
+# Ask for and cache sudo password #
+##############################
+heading "Let's start by getting your admin password"
+admin_pass
+case $choice in
+	1)
+		##############################
+		# Install dependencies #
+		##############################
+		heading "Installing System Dependencies…"
 
-			if [ ! $internet ];
-			then
-				cecho "No internet connection avaliable! Please connect to the internet when possible and try again." $red
-				exit;
-			fi
+		if [ ! $internet ];
+		then
+			cecho "No internet connection avaliable! Please connect to the internet when possible and try again." $red
+			exit;
+		fi
 
-			#Check if system bin folder exists.
-			if [ ! -d "$HOME/.bin/" ]; then
-				mkdir "$HOME/.bin"
-			fi
+		#Check if system bin folder exists.
+		if [ ! -d "$HOME/.bin/" ]; then
+			mkdir "$HOME/.bin"
+		fi
 
-			# Check if system sbin folder exists.
-			if [ ! -d "$HOME/.sbin/" ]; then
-				mkdir "$HOME/.sbin"
-			fi
+		# Check if system sbin folder exists.
+		if [ ! -d "$HOME/.sbin/" ]; then
+			mkdir "$HOME/.sbin"
+		fi
 
-			# Make sure you user/local exists.
-			if [ ! -d "/usr/local" ]; then
-				sudo mkdir "/usr/local"
-				sudo chflags norestricted "/usr/local"
-			fi
-			
-			# Check if xcode is installed. If not install it.
-			if type xcode-select >&- && xpath=$( xcode-select --print-path ) &&
-				test -d "${xpath}" && test -x "${xpath}" ; then
-				cecho "Xcode already installed. Skipping..." $dim
+		# Make sure you user/local exists.
+		if [ ! -d "/usr/local" ]; then
+			sudo mkdir "/usr/local"
+			sudo chflags norestricted "/usr/local"
+		fi
+		
+		# Check if xcode is installed. If not install it.
+		if type xcode-select >&- && xpath=$( xcode-select --print-path ) &&
+			test -d "${xpath}" && test -x "${xpath}" ; then
+			cecho "Xcode already installed. Skipping..." $dim
+		else
+			step "Installing Xcode..."
+			xcode-select --install
+			cecho "Xcode successfully installed." $green
+		fi
+
+		# Check for Brew installation.
+		if test ! "$(which brew)"
+		then
+			step "Installing Homebrew..."
+			## Don't prompt for confirmation when installing homebrew
+			/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
+			cecho "Homebrew successfully installed." $green
+		else
+			cecho "Homebrew already installed. Skipping..." $dim
+		fi
+
+		# Remove Old brew-cask if found.
+		if brew list | grep -Fq brew-cask; then
+			step "Uninstalling old Homebrew-Cask..."
+			brew uninstall --force brew-cask
+			cecho "Homebrew-Cask uninstalled!" $green
+		fi
+
+		# Make sure system is running the latest Homebrew
+		brew upgrade 2> /dev/null
+
+		# Stopping and unloading system apache
+		sudo apachectl stop
+		sudo launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist 2>/dev/null
+
+		# Installing shell enviornment.
+		step "Setting up the Shell environment..."
+		if [ ! -f $location/storage/shell.log ]; then
+			printf "Which shell would you like to us? b/z "
+			read shell
+			touch $location/storage/shell.log
+			if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
+				install_bash
+				cecho "Shell set to Bash." $green
+				printf '\n'
 			else
-				step "Installing Xcode..."
-				xcode-select --install
-				cecho "Xcode successfully installed." $green
+				install_zsh
+				printf '\n'
 			fi
-
-			# Check for Brew installation.
-			if test ! "$(which brew)"
-			then
-				step "Installing Homebrew..."
-				## Don't prompt for confirmation when installing homebrew
-				/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
-				cecho "Homebrew successfully installed." $green
-			else
-				cecho "Homebrew already installed. Skipping..." $dim
-			fi
-
-			# Remove Old brew-cask if found.
-			if brew list | grep -Fq brew-cask; then
-				step "Uninstalling old Homebrew-Cask..."
-				brew uninstall --force brew-cask
-				cecho "Homebrew-Cask uninstalled!" $green
-			fi
-
-			# Make sure system is running the latest Homebrew
-			brew upgrade 2> /dev/null
-
-			# Stopping and unloading system apache
-			sudo apachectl stop
-			sudo launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist 2>/dev/null
-
-			# Installing shell enviornment.
-			step "Setting up the Shell environment..."
-			if [ ! -f $location/storage/shell.log ]; then
-				printf "Which shell would you like to us? b/z "
-				read shell
-				touch $location/storage/shell.log
-				if [[ $shell =~ ^([bB][bashBash]|[bB])$ ]]; then
+		else
+			printf "It looks like you have a shell environment set. Would you like to change it? y/N "
+			read shellChange
+			if [[ $shellChange =~ ^([yY])$ ]]; then
+				step "Changing shell..."
+				if [ $(grep "zsh" $location/storage/shell.log) ]; then
 					install_bash
-					cecho "Shell set to Bash." $green
+					cecho "Shell environment changed to Bash." $green
 					printf '\n'
 				else
 					install_zsh
+					cecho "Shell environment changed to ZSH." $green
 					printf '\n'
 				fi
 			else
-				printf "It looks like you have a shell environment set. Would you like to change it? y/N "
-				read shellChange
-				if [[ $shellChange =~ ^([yY])$ ]]; then
-					step "Changing shell..."
-					if [ $(grep "zsh" $location/storage/shell.log) ]; then
-						install_bash
-						cecho "Shell environment changed to Bash." $green
-						printf '\n'
+				cecho "Shell already configured. Skipping..." $dim
+				printf '\n'
+			fi
+		fi
+
+		##############################
+		# Add dotfiles #
+		##############################
+
+		heading "Adding system dotfiles"
+
+		# Check if user has chosen ZSH or Bash.
+		if [ $(grep "zsh" $location/storage/shell.log) ]; then
+			step "Copying ZSH files..."
+			cp $location/seeds/.zprofile $HOME
+			# Check if zsh module folder exists.
+			if [ ! -d "$HOME/.zsh/" ]; then
+				mkdir $HOME/.zsh
+				cp $location/seeds/.zsh/aliases.zsh $HOME/.zsh
+				cp $location/seeds/.zsh/exports.zsh $HOME/.zsh
+				cp $location/seeds/.zsh/functions.zsh $HOME/.zsh
+				# Check if .extra file exists and add it to the system modules folder.
+				if [ -f "$location/seeds/.zsh/extra.zsh" ]; then
+					cp $location/seeds/.zsh/extra.zsh $HOME/.zsh
+				fi
+				
+				install_zsh_dependecies
+			fi
+		else
+			step "Copying Bash files..."
+			cp $location/seeds/.bash_profile $HOME
+			# Check if system module folder exists.
+			if [ ! -d "$HOME/.bash/" ]; then
+				mkdir $HOME/.bash
+				cp $location/seeds/.bash/aliases.sh $HOME/.bash
+				cp $location/seeds/.bash/exports.sh $HOME/.bash
+				cp $location/seeds/.bash/functions.sh $HOME/.bash
+				# Check if .extra file exists and add it to the system modules folder.
+				if [ -f "$location/seeds/.bash/extra.sh" ]; then
+					cp $location/seeds/.bash/extra.sh $HOME/.bash
+				fi
+			fi
+
+			# Supress Mac warning to use ZSH.
+			supress_zsh_warning
+		fi
+		
+		# Copy system dotfiles to root.
+		step "Adding other dotfiles..."
+
+		if [ ! -f "$HOME/.gitattributes" ];
+		then
+			cp $location/seeds/.gitattributes $HOME
+		fi
+		if [ ! -f "$HOME/.gitconfig" ];
+		then
+			cp $location/seeds/.gitconfig $HOME
+		fi
+		if [ ! -f "$HOME/.gitignore" ];
+		then
+			cp $location/seeds/.gitignore $HOME
+		fi
+		if [ ! -f "$HOME/.gvimrc" ];
+		then
+			cp $location/seeds/.gvimrc $HOME
+		fi
+		if [ ! -f "$HOME/.vimrc" ];
+		then
+			cp $location/seeds/.vimrc $HOME
+		fi
+		if [ ! -d "$HOME/.vim" ];
+		then
+			cp $location/seeds/.vim $HOME
+		fi
+		if [ ! -f "$HOME/.editorconfig" ];
+		then
+			cp $location/seeds/.editorconfig $HOME
+		fi
+		if [ ! -f "$HOME/.curlrc" ];
+		then
+			cp $location/seeds/.curlrc $HOME
+		fi
+		if [ ! -f "$HOME/.nvmrc" ];
+		then
+			cp $location/seeds/.nvmrc $HOME
+		fi
+		if [ ! -f "$HOME/.hyper.js" ];
+		then
+			cp $location/seeds/.hyper.js $HOME
+		fi
+		cecho "All dotfiles have been added." $green
+
+		#############################################
+		# Create a system SSH key #
+		# See: https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/
+		#############################################
+		heading "Creating system SSH key"
+
+		# Check if ssh folder exists.
+		if [ ! -d "$HOME/.ssh/" ]; then
+			mkdir $HOME/.ssh
+		fi
+
+		step "Creating key and adding to agent."
+		cd $HOME/.ssh
+		read -p 'Input email for ssh key: ' sshEmail
+		ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
+		eval "$(ssh-agent -s)"
+		cd $location
+		
+		# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
+		step "Adding SSH key to keychain..."
+		ssh-add $HOME/.ssh/id_rsa
+		cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
+		cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
+		printf "\n"
+		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
+
+		if [ -e "$HOME/.ssh/config" ]
+		then
+			cecho "An SSH config file already exists. Skipping... " $dim
+		else
+			step "Creating a new SSH config file with default settings..."
+			create_ssh_config
+			cecho "Successfully created SSH config file." $green
+		fi
+
+		#############################################
+		# Add ssh-key to GitHub via api
+		# Reference new-computer github account
+		#############################################
+
+		echo "Adding ssh-key to GitHub (via api)..."
+		cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
+		cecho "If you don't have one, create it here: https://github.com/settings/tokens/new" $yellow
+		retries=3
+		SSH_KEY=`cat $HOME/.ssh/id_rsa.pub`
+
+		for ((i=0; i<retries; i++)); do
+			read -p 'GitHub username: ' ghusername
+			read -p 'Machine name: ' ghtitle
+			read -sp 'GitHub personal token: ' ghtoken
+
+			gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
+
+			if (( $gh_status_code -eq == 201))
+			then
+				cecho "GitHub ssh key added successfully!" $green
+				break
+			else
+					cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
+					echo -n "Status code returned: "
+					echo $gh_status_code
+			fi
+		done
+
+		[[ $retries -eq i ]] && cecho "Adding ssh-key to GitHub failed! Try again later." $red
+		printf "\n"
+
+
+		##############################
+		# Install Brews #
+		##############################
+
+		heading "Installing Homebrew formulaes and casks"
+
+		if [ -e $location/seeds/Brewfile ]; 
+		then
+			if test "$(which brew)"
+			then
+				step "Installing Brewfile..."
+				cp $location/seeds/Brewfile $HOME
+				cd $HOME
+				brew bundle
+
+				step "Updating Heroku Binary"
+				brew unlink heroku
+				brew link --overwrite heroku
+				
+				step "Updating MongoDB Binary"
+				brew unlink mongodb
+				brew link --overwrite mongodb-community
+
+				step "Updating pngnq Binary"
+				brew unlink pngnq
+				brew link --overwrite pngnq-s9
+
+				# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
+				ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
+				
+				# Run a Homebrew cleanup.
+				step "Cleaning up Homebrew..."
+				brew cleanup 2> /dev/null
+				brew cleanup cask 2> /dev/null
+
+				cd $location
+			else
+				cecho "Homebrew may not be installed or you may not have internet. Please try again." $red
+			fi
+		fi
+
+		# Start brew apache
+		brew services start httpd
+
+		##############################
+		# Add git user config data #
+		##############################
+
+		heading "Adding user info to gitconfig..."
+
+		read -p "What username would you like to add to the gitconfig file? Default is your user account." gitUser
+		read -p "Enter the email you would like to add to the gitconfig file?" gitEmail
+
+		step "Adding Git config data..."
+		git config –-global user.name "${gitUser:-$USER}"
+		git config –-global user.email "${gitEmail}"
+		
+		cecho "Git user data has been successfully added to .gitconfig" $green
+
+		###############################################################################
+		# Install Mac Store Apps #
+		###############################################################################
+
+		heading "Installing apps from the Mac Apps store"
+
+		if test "$(which mas)"
+		then
+			echo "Opening App Store. Please login to continue."
+			open "/Applications/App Store.app"
+			read -p "Has login completed successfully (y/n)? " loginConfirm
+
+			if [ $loginConfirm != "${loginConfirm#[Yy]}" ] && [ -f $location/seeds/apps ];
+			then
+				step "Installing App Store apps..."
+				for app in $(<$location/seeds/apps); do
+					# Remove App names from list.
+					app=${app%%:*}
+
+					# Install app.
+					if test ! "$(mas list | grep $app)"; then
+						installing "Installing $app"
+						mas install $app >/dev/null
+						cecho "${bold}✓ $app gem installed${normal}" $green
+						printf "\n"
 					else
-						install_zsh
-						cecho "Shell environment changed to ZSH." $green
-						printf '\n'
+						cecho "$app has already been installed. Skipped..." $dim
+						printf "\n"
 					fi
-				else
-					cecho "Shell already configured. Skipping..." $dim
-					printf '\n'
-				fi
-			fi
+				done
 
-			##############################
-			# Add dotfiles #
-			##############################
-
-			heading "Adding system dotfiles"
-
-			# Check if user has chosen ZSH or Bash.
-			if [ $(grep "zsh" $location/storage/shell.log) ]; then
-				step "Copying ZSH files..."
-				cp $location/seeds/.zprofile $HOME
-				# Check if zsh module folder exists.
-				if [ ! -d "$HOME/.zsh/" ]; then
-					mkdir $HOME/.zsh
-					cp $location/seeds/.zsh/aliases.zsh $HOME/.zsh
-					cp $location/seeds/.zsh/exports.zsh $HOME/.zsh
-					cp $location/seeds/.zsh/functions.zsh $HOME/.zsh
-					# Check if .extra file exists and add it to the system modules folder.
-					if [ -f "$location/seeds/.zsh/extra.zsh" ]; then
-						cp $location/seeds/.zsh/extra.zsh $HOME/.zsh
-					fi
-					
-					install_zsh_dependecies
-				fi
+				cecho "Successfully installed App Store apps." $green
 			else
-				step "Copying Bash files..."
-				cp $location/seeds/.bash_profile $HOME
-				# Check if system module folder exists.
-				if [ ! -d "$HOME/.bash/" ]; then
-					mkdir $HOME/.bash
-					cp $location/seeds/.bash/aliases.sh $HOME/.bash
-					cp $location/seeds/.bash/exports.sh $HOME/.bash
-					cp $location/seeds/.bash/functions.sh $HOME/.bash
-					# Check if .extra file exists and add it to the system modules folder.
-					if [ -f "$location/seeds/.bash/extra.sh" ]; then
-						cp $location/seeds/.bash/extra.sh $HOME/.bash
-					fi
-				fi
+				cecho "App Store login aborted. Skipping..." $dim
+			fi
+		else
+			cecho "There appears to be a problem with mas. Please re-install and try again." $red
+		fi
 
-				# Supress Mac warning to use ZSH.
-				supress_zsh_warning
-			fi
-			
-			# Copy system dotfiles to root.
-			step "Adding other dotfiles..."
+		###############################################################################
+		# Install Mac None Store Apps #
+		###############################################################################
 
-			if [ ! -f "$HOME/.gitattributes" ];
-			then
-				cp $location/seeds/.gitattributes $HOME
-			fi
-			if [ ! -f "$HOME/.gitconfig" ];
-			then
-				cp $location/seeds/.gitconfig $HOME
-			fi
-			if [ ! -f "$HOME/.gitignore" ];
-			then
-				cp $location/seeds/.gitignore $HOME
-			fi
-			if [ ! -f "$HOME/.gvimrc" ];
-			then
-				cp $location/seeds/.gvimrc $HOME
-			fi
-			if [ ! -f "$HOME/.vimrc" ];
-			then
-				cp $location/seeds/.vimrc $HOME
-			fi
-			if [ ! -d "$HOME/.vim" ];
-			then
-				cp $location/seeds/.vim $HOME
-			fi
-			if [ ! -f "$HOME/.editorconfig" ];
-			then
-				cp $location/seeds/.editorconfig $HOME
-			fi
-			if [ ! -f "$HOME/.curlrc" ];
-			then
-				cp $location/seeds/.curlrc $HOME
-			fi
-			if [ ! -f "$HOME/.nvmrc" ];
-			then
-				cp $location/seeds/.nvmrc $HOME
-			fi
-			if [ ! -f "$HOME/.hyper.js" ];
-			then
-				cp $location/seeds/.hyper.js $HOME
-			fi
-			cecho "All dotfiles have been added." $green
+		heading "Installing apps from the web"
 
-			#############################################
-			# Create a system SSH key #
-			# See: https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/
-			#############################################
-			heading "Creating system SSH key"
+		# Check if Composer is already installed.
+		# Check if restore folder exists
+		if [ ! -d "$location/pottingshed" ]; then
+			mkdir "$location/pottingshed"
+		fi
+		if [ ! -d "$location/pottingshed/apps" ]; then
+			mkdir "$location/pottingshed/apps"
+		fi
+		
+		# Move into pottingshed/apps
+		cd $location/pottingshed/apps
 
-			# Check if ssh folder exists.
-			if [ ! -d "$HOME/.ssh/" ]; then
-				mkdir $HOME/.ssh
-			fi
+		if [ ! -f "/Applications/Popcorn-Time.app" ];
+		then
+			step "Downloading PopcornTime..."
+			wget https://get.popcorntime.sh/build/Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
+			unzip Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
+			mv Popcorn-Time.app /Applications
+			cecho "Successfully downloaded and installed PopcornTime." $green
+		else
+			cecho "PopcornTime already installed. Skipping..." $dim
+		fi
 
-			step "Creating key and adding to agent."
-			cd $HOME/.ssh
-			read -p 'Input email for ssh key: ' sshEmail
-			ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
-			eval "$(ssh-agent -s)"
-			cd $location
-			
-			# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
-			step "Adding SSH key to keychain..."
-			ssh-add $HOME/.ssh/id_rsa
-			cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
-			cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
-			printf "\n"
-			cecho "Successfully created SSH config file. Now creating SSH config file..." $green
-
-			if [ -e "$HOME/.ssh/config" ]
+		if [ ! -f "/Applications/IconJar.app" ];
+		then
+			step "Downloading IconJar..."
+			cecho "GreenHouse will only install IconJar v1 as I don't like how it is now a subscription service." $dim
+			cecho "For IconJar v2 run ${bold}brew install iconjar${normal}" $dim
+			read -p "Continue with v1 install? Y/n" iconjar1
+			if [ $iconjar1 =~ ^([yY])$ ];
 			then
-				cecho "An SSH config file already exists. Skipping... " $dim
+				wget https://dl.devmate.com/com.iconjar.iconjar/Iconjar.zip 2> /dev/null
+				cp Iconjar.zip $location/storage # Move Iconjar.zip to storage encase creator removes option to download v1 in the future.
+				unzip Iconjar.zip 2> /dev/null
+				mv IconJar.app /Applications
+				cecho "Successfully downloaded and installed IconJar v1." $green
 			else
-				step "Creating a new SSH config file with default settings..."
-				create_ssh_config
-				cecho "Successfully created SSH config file." $green
+				cecho "IconJar v1 installation aborted. Skipping..." $dim
 			fi
+		else
+			cecho "IconJar already installed. Skipping..." $dim
+		fi
 
-			#############################################
-			# Add ssh-key to GitHub via api
-			# Reference new-computer github account
-			#############################################
+		if [ ! -f "/Downloads/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg" ];
+		then
+			step "Downloading File..."
+			wget https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg 2> /dev/null
+			mv FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg /Downloads
+			cecho "Downloaded FileZilla into Downloads folder" $green
+		else
+			cecho "FileZilla already downloaded. Skipping..." $dim
+		fi
 
-			echo "Adding ssh-key to GitHub (via api)..."
-			cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
-			cecho "If you don't have one, create it here: https://github.com/settings/tokens/new" $yellow
-			retries=3
-			SSH_KEY=`cat $HOME/.ssh/id_rsa.pub`
+		# Come out of pottingshed.
+		cd $location
 
-			for ((i=0; i<retries; i++)); do
-				read -p 'GitHub username: ' ghusername
-				read -p 'Machine name: ' ghtitle
-				read -sp 'GitHub personal token: ' ghtoken
+		# Remove pottingshed/apps to save space
+		rm -rf $location/pottingshed/apps/
 
-				gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
+		###############################################################################
+		# Install Node with NVM & NPM packages #
+		###############################################################################
 
-				if (( $gh_status_code -eq == 201))
+		heading "Node with NVM & NPM packages"
+
+		# Install NVM to manage Node.
+		step "Installing NVM..."
+		if [[ ! "$(which nvm)" ]];
+		then
+			if [ ! $(grep "nvm" $location/seeds/brews) ];
+			then
+				curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.2/install.sh | bash
+			fi
+		fi
+
+		if [ ! -f "$HOME/.nvmrc" ];
+		then
+			touch $HOME/.nvmrc
+			echo "lts/*" > $HOME/.nvmrc
+		fi
+
+		setup_nvm
+
+		cecho "NVM has been installed and configured." $green
+
+		step "Installing latest Node & LTS Node..."
+		nvm install node
+		nvm run node --version
+		nodeVersion=$(node -v)
+		nvm install --lts node
+		nvm use --lts
+		nodeLTSVersion=$(node -v)
+
+		cecho "Successfully installed NVM and Node. Node version: $nodeVersion and LTS version: $nodeLTSVersion\n" $green
+		cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
+
+		step "Installing NPM packages..."
+		read -p "Would you like to use Yarn or NPM? yarn/npm" installPkg
+
+		if [ -e $location/seeds/npm ];
+		then
+			if [ $installPkg == 'yarn' ];
+			then
+				if test "$(which yarn)"
 				then
-					cecho "GitHub ssh key added successfully!" $green
-					break
+					install_with_yarn
+					xargs yarn global add < $location/seeds/npm
 				else
-						cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
-						echo -n "Status code returned: "
-						echo $gh_status_code
-				fi
-			done
-
-			[[ $retries -eq i ]] && cecho "Adding ssh-key to GitHub failed! Try again later." $red
-			printf "\n"
-
-
-			##############################
-			# Install Brews #
-			##############################
-
-			heading "Installing Homebrew formulaes and casks"
-
-			if [ -e $location/seeds/Brewfile ]; 
-			then
-				if test "$(which brew)"
-				then
-					step "Installing Brewfile..."
-					cp $location/seeds/Brewfile $HOME
-					cd $HOME
-					brew bundle
-
-					step "Updating Heroku Binary"
-					brew unlink heroku
-					brew link --overwrite heroku
-					
-					step "Updating MongoDB Binary"
-					brew unlink mongodb
-					brew link --overwrite mongodb-community
-
-					step "Updating pngnq Binary"
-					brew unlink pngnq
-					brew link --overwrite pngnq-s9
-
-					# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
-					ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
-					
-					# Run a Homebrew cleanup.
-					step "Cleaning up Homebrew..."
-					brew cleanup 2> /dev/null
-					brew cleanup cask 2> /dev/null
-
-					cd $location
-				else
-					cecho "Homebrew may not be installed or you may not have internet. Please try again." $red
-				fi
-			fi
-
-			# Start brew apache
-			brew services start httpd
-
-			##############################
-			# Add git user config data #
-			##############################
-
-			heading "Adding user info to gitconfig..."
-
-			read -p "What username would you like to add to the gitconfig file? Default is your user account." gitUser
-			read -p "Enter the email you would like to add to the gitconfig file?" gitEmail
-
-			step "Adding Git config data..."
-			git config –-global user.name "${gitUser:-$USER}"
-			git config –-global user.email "${gitEmail}"
-			
-			cecho "Git user data has been successfully added to .gitconfig" $green
-
-			###############################################################################
-			# Install Mac Store Apps #
-			###############################################################################
-
-			heading "Installing apps from the Mac Apps store"
-
-			if test "$(which mas)"
-			then
-				echo "Opening App Store. Please login to continue."
-				open "/Applications/App Store.app"
-				read -p "Has login completed successfully (y/n)? " loginConfirm
-
-				if [ $loginConfirm != "${loginConfirm#[Yy]}" ] && [ -f $location/seeds/apps ];
-				then
-					step "Installing App Store apps..."
-					for app in $(<$location/seeds/apps); do
-						# Remove App names from list.
-						app=${app%%:*}
-
-						# Install app.
-						if test ! "$(mas list | grep $app)"; then
-							installing "Installing $app"
-							mas install $app >/dev/null
-							cecho "${bold}✓ $app gem installed${normal}" $green
-							printf "\n"
-						else
-							cecho "$app has already been installed. Skipped..." $dim
-							printf "\n"
-						fi
-					done
-
-					cecho "Successfully installed App Store apps." $green
-				else
-					cecho "App Store login aborted. Skipping..." $dim
-				fi
-			else
-				cecho "There appears to be a problem with mas. Please re-install and try again." $red
-			fi
-
-			###############################################################################
-			# Install Mac None Store Apps #
-			###############################################################################
-
-			heading "Installing apps from the web"
-
-			# Check if Composer is already installed.
-			# Check if restore folder exists
-			if [ ! -d "$location/pottingshed" ]; then
-				mkdir "$location/pottingshed"
-			fi
-			if [ ! -d "$location/pottingshed/apps" ]; then
-				mkdir "$location/pottingshed/apps"
-			fi
-			
-			# Move into pottingshed/apps
-			cd $location/pottingshed/apps
-
-			if [ ! -f "/Applications/Popcorn-Time.app" ];
-			then
-				step "Downloading PopcornTime..."
-				wget https://get.popcorntime.sh/build/Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
-				unzip Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
-				mv Popcorn-Time.app /Applications
-				cecho "Successfully downloaded and installed PopcornTime." $green
-			else
-				cecho "PopcornTime already installed. Skipping..." $dim
-			fi
-
-			if [ ! -f "/Applications/IconJar.app" ];
-			then
-				step "Downloading IconJar..."
-				cecho "GreenHouse will only install IconJar v1 as I don't like how it is now a subscription service." $dim
-				cecho "For IconJar v2 run ${bold}brew install iconjar${normal}" $dim
-				read -p "Continue with v1 install? Y/n" iconjar1
-				if [ $iconjar1 =~ ^([yY])$ ];
-				then
-					wget https://dl.devmate.com/com.iconjar.iconjar/Iconjar.zip 2> /dev/null
-					cp Iconjar.zip $location/storage # Move Iconjar.zip to storage encase creator removes option to download v1 in the future.
-					unzip Iconjar.zip 2> /dev/null
-					mv IconJar.app /Applications
-					cecho "Successfully downloaded and installed IconJar v1." $green
-				else
-					cecho "IconJar v1 installation aborted. Skipping..." $dim
-				fi
-			else
-				cecho "IconJar already installed. Skipping..." $dim
-			fi
-
-			if [ ! -f "/Downloads/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg" ];
-			then
-				step "Downloading File..."
-				wget https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg 2> /dev/null
-				mv FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg /Downloads
-				cecho "Downloaded FileZilla into Downloads folder" $green
-			else
-				cecho "FileZilla already downloaded. Skipping..." $dim
-			fi
-
-			# Come out of pottingshed.
-			cd $location
-
-			# Remove pottingshed/apps to save space
-			rm -rf $location/pottingshed/apps/
-
-			###############################################################################
-			# Install Node with NVM & NPM packages #
-			###############################################################################
-
-			heading "Node with NVM & NPM packages"
-
-			# Install NVM to manage Node.
-			step "Installing NVM..."
-			if [[ ! "$(which nvm)" ]];
-			then
-				if [ ! $(grep "nvm" $location/seeds/brews) ];
-				then
-					curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.2/install.sh | bash
-				fi
-			fi
-
-			if [ ! -f "$HOME/.nvmrc" ];
-			then
-				touch $HOME/.nvmrc
-				echo "lts/*" > $HOME/.nvmrc
-			fi
-
-			setup_nvm
-
-			cecho "NVM has been installed and configured." $green
-
-			step "Installing latest Node & LTS Node..."
-			nvm install node
-			nvm run node --version
-			nodeVersion=$(node -v)
-			nvm install --lts node
-			nvm use --lts
-			nodeLTSVersion=$(node -v)
-
-			cecho "Successfully installed NVM and Node. Node version: $nodeVersion and LTS version: $nodeLTSVersion\n" $green
-			cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
-
-			step "Installing NPM packages..."
-			read -p "Would you like to use Yarn or NPM? yarn/npm" installPkg
-
-			if [ -e $location/seeds/npm ];
-			then
-				if [ $installPkg == 'yarn' ];
-				then
-					if test "$(which yarn)"
-					then
-						install_with_yarn
-						xargs yarn global add < $location/seeds/npm
-					else
-						cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
-						xargs npm install -g < $location/seeds/npm
-					fi
-				else
+					cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
 					xargs npm install -g < $location/seeds/npm
 				fi
-			fi
-			cecho "All $installPkg packages installed." $green
-			
-			###############################################################################
-			# Setup Ruby and install Ruby gems #
-			###############################################################################
-
-			heading "Setting up Ruby and installing Ruby gems"
-
-			if test ! "$(which rbenv)"
-			then
-				cecho "Unable to install latest Ruby version. Please check your Homebrew installation and try again." $red
-				printf "\n"
 			else
-				step "Configuring Ruby..."
-				rubyVersion=$(rbenv install -l | grep -v - | tail -1)
-
-				rbenv install $rubyVersion
-				rbenv global $rubyVersion
+				xargs npm install -g < $location/seeds/npm
 			fi
+		fi
+		cecho "All $installPkg packages installed." $green
+		
+		###############################################################################
+		# Setup Ruby and install Ruby gems #
+		###############################################################################
 
-			# Choose between bundler install or gem install.
-			read -p "Would you like to install global Ruby gems wiht Bundler or standard gem? b/s" rubyGems 
+		heading "Setting up Ruby and installing Ruby gems"
 
-			if test ! "$(gem -v)"
+		if test ! "$(which rbenv)"
+		then
+			cecho "Unable to install latest Ruby version. Please check your Homebrew installation and try again." $red
+			printf "\n"
+		else
+			step "Configuring Ruby..."
+			rubyVersion=$(rbenv install -l | grep -v - | tail -1)
+
+			rbenv install $rubyVersion
+			rbenv global $rubyVersion
+		fi
+
+		# Choose between bundler install or gem install.
+		read -p "Would you like to install global Ruby gems wiht Bundler or standard gem? b/s" rubyGems 
+
+		if test ! "$(gem -v)"
+		then
+			cecho "Unable to install Ruby gems.\n" $red
+		else
+			step "Installing Ruby gems..."
+			if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
 			then
-				cecho "Unable to install Ruby gems.\n" $red
-			else
-				step "Installing Ruby gems..."
-				if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
-				then
-					if test ! "$(gem list bundler)"; then
-						gem install bundler
+				if test ! "$(gem list bundler)"; then
+					gem install bundler
+				fi
+				cd $HOME
+				bundle init
+				for bundle in $(<$location/seeds/bundles); do
+					if test ! "$(bundle list | grep $bundle)"; then
+						installing "Installing $bundle"
+						bundle add $bundle >/dev/null
+						cecho "${bold}✓ $bundle gem installed${normal}" $green
+						printf "\n"
+					else
+						cecho "$bundle has already been installed. Skipped..." $dim
+						printf "\n"
 					fi
-					cd $HOME
-					bundle init
-					cd $location
-					for bundle in $(<$location/seeds/bundles); do
-						if test ! "$(bundle list | grep $bundle)"; then
-							installing "Installing $bundle"
-							bundle add $bundle >/dev/null
-							cecho "${bold}✓ $bundle gem installed${normal}" $green
-							printf "\n"
-						else
-							cecho "$bundle has already been installed. Skipped..." $dim
-							printf "\n"
-						fi
-					done
-					rbenv rehash
+				done
+				rbenv rehash
+				cd $location
+				printf "\n"
+				cecho "Successfully installed Ruby gems with Bundler." $green
+			else
+				for gem in $(<$location/seeds/gems); do
+					if test ! "$(gem list | grep $gem)"; then
+						installing "Installing $gem"
+						gem install $gem >/dev/null
+						cecho "${bold}✓ $gem gem installed${normal}" $green
+						printf "\n"
+					else
+						cecho "$gem has already been installed. Skipped..." $dim
+						printf "\n"
+					fi
+				done
+
+				cecho "Successfully installed Ruby gems." $green
+			fi
+		fi
+		
+		###############################################################################
+		# Install Composer and packages #
+		###############################################################################
+
+		heading "Installing Composer and packages"
+
+		# Check if Composer is already installed.
+		# Check if subdirectoy folder exists
+		if [ ! -d "$location/pottingshed" ]; then
+			mkdir "$location/pottingshed"
+		fi
+		if [ ! -d "$location/pottingshed/composer" ]; then
+			mkdir "$location/pottingshed/composer"
+		fi
+
+		if [[ ! "$(which composer)" ]]; then
+			step "Installing Composer..."
+
+			cd $location/pottingshed/composer
+			php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+			php -r "if (hash_file('sha384', 'composer-setup.php') === 'c5b9b6d368201a9db6f74e2611495f369991b72d9c8cbd3ffbc63edff210eb73d46ffbfce88669ad33695ef77dc76976') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
+			php composer-setup.php
+			php -r "unlink('composer-setup.php');"
+
+			# Check if /usr/local/bin/composer exists.
+			if [ ! -d "/usr/local/bin/composer" ]; then
+				mkdir /usr/local/bin/composer
+			fi
+
+			# Move composer file to bin so it can be a global command.
+			mv composer.phar /usr/local/bin/composer
+
+			# Switch directory back to project root.
+			cd $location
+
+			# Clean out composer subdirectory to preserve space.
+			rm -rf $location/pottingshed/composer
+
+			cecho "Successfully installed Composer." $green
+		else
+			cecho "Composer already installed. Skipping..." $dim
+		fi
+
+		if [[ "$(which composer)" ]]; then
+			step "Installing Composer packages..."
+			for composer in $(<$location/seeds/composer); do
+				if test ! "$(composer global info | grep $composer)"; then
+					installing "Installing $composer"
+					composer global require $composer >/dev/null
+					cecho "${bold}✓ $composer package installed${normal}" $green
 					printf "\n"
-					cecho "Successfully installed Ruby gems with Bundler." $green
 				else
-					for gem in $(<$location/seeds/gems); do
-						if test ! "$(gem list | grep $gem)"; then
-							installing "Installing $gem"
-							gem install $gem >/dev/null
-							cecho "${bold}✓ $gem gem installed${normal}" $green
-							printf "\n"
-						else
-							cecho "$gem has already been installed. Skipped..." $dim
-							printf "\n"
-						fi
-					done
-
-					cecho "Successfully installed Ruby gems." $green
+					cecho "$composer has already been installed. Skipped..." $dim
+					printf "\n"
 				fi
+			done
+		else
+			cecho "Unable to install Composer packages. Please try again." $red
+		fi
+
+		###############################################################################
+		# Install WP-CLI and packages #
+		###############################################################################
+
+		heading "Installing WP-CLI and packages"
+
+		# Check if Composer is already installed.
+		# Check if restore folder exists
+		if [ ! -d "$location/pottingshed" ]; then
+			mkdir "$location/pottingshed"
+		fi
+		if [ ! -d "$location/pottingshed/wpcli" ]; then
+			mkdir "$location/pottingshed/wpcli"
+		fi
+
+		if [[ ! "$(which wp)" ]]; then
+			step "Installing WP-CLI..."
+			cd $location/pottingshed/wpcli
+			curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+			chmod +x wp-cli.phar
+
+			# Check if /usr/local/bin/wp exists.
+			if [ ! -d "/usr/local/bin/wp" ]; then
+				mkdir /usr/local/bin/wp
 			fi
+
+			# Move wp-cli.phar file to bin so we can just use the wp command.
+			mv wp-cli.phar /usr/local/bin/wp
+
+			# Switch directory back to project root.
+			cd $location
+
+			# Clean out wpcli subdirectory to preserve space.
+			rm -rf $location/pottingshed/wpcli
+
+			# Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
+			fix_php_memory
+
+			cecho "Successfully installed WP-CLI." $green
+		else
+			cecho "WP-CLI already installed. Skipping..." $dim
+		fi
+
+		if [[ "$(which wp)" ]]; then
+			step "Installing WP-CLI packages..."
+			for wp in $(<$location/seeds/wpcli); do
+				if test ! "$(wp package list | grep $wp)"; then
+					installing "Installing $wp"
+					wp package install $wp >/dev/null
+					cecho "${bold}✓ $wp package installed${normal}" $green
+					printf "\n"
+				else
+					cecho "$wp has already been installed. Skipped..." $dim
+					printf "\n"
+				fi
+			done
 			
-			###############################################################################
-			# Install Composer and packages #
-			###############################################################################
+			cecho "Successfully installed WP-CLI packages." $green
+		else
+			cecho "Unable to install packages. Please try again." $red
+		fi
+		
+		###############################################################################
+		# Install Python packages #
+		###############################################################################
 
-			heading "Installing Composer and packages"
+		heading "Installing Python packages"
 
-			# Check if Composer is already installed.
-			# Check if subdirectoy folder exists
-			if [ ! -d "$location/pottingshed" ]; then
-				mkdir "$location/pottingshed"
-			fi
-			if [ ! -d "$location/pottingshed/composer" ]; then
-				mkdir "$location/pottingshed/composer"
-			fi
+		if test ! "$(pip list)"
+		then
+			cecho "Unable to install Python packages. Please try again." $red
+		else
+			step "Installing Python packages..."
+			pip install --upgrade pip
+			pip install --user pylint
+			pip install --user flake8
+			cecho "Successfully installed packages." $green
+		fi
+		
+		###############################################################################
+		# Install Self-Assigned SSL #
+		###############################################################################
 
-			if [[ ! "$(which composer)" ]]; then
-				step "Installing Composer..."
+		heading "Installing system SSL"
 
-				cd $location/pottingshed/composer
-				php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-				php -r "if (hash_file('sha384', 'composer-setup.php') === 'c5b9b6d368201a9db6f74e2611495f369991b72d9c8cbd3ffbc63edff210eb73d46ffbfce88669ad33695ef77dc76976') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
-				php composer-setup.php
-				php -r "unlink('composer-setup.php');"
+		ssl_check
+		
+		###############################################################################
+		# Install Meteor #
+		###############################################################################
 
-				# Check if /usr/local/bin/composer exists.
-				if [ ! -d "/usr/local/bin/composer" ]; then
-					mkdir /usr/local/bin/composer
-				fi
+		heading "Installing Meteor"
 
-				# Move composer file to bin so it can be a global command.
-				mv composer.phar /usr/local/bin/composer
+		if test "$(meteor --help)"
+		then
+			cecho "Meteor already installed. Skipping..." $dim
+		else
+			curl https://install.meteor.com/ | sh
+			cecho "Successfully installed Meteor." $green
+		fi
 
-				# Switch directory back to project root.
-				cd $location
+		###############################################################################
+		# Install Hyper.js packages and config #
+		###############################################################################
 
-				# Clean out composer subdirectory to preserve space.
-				rm -rf $location/pottingshed/composer
+		heading "Installing Hyper.js packages"
 
-				cecho "Successfully installed Composer." $green
-			else
-				cecho "Composer already installed. Skipping..." $dim
-			fi
-
-			if [[ "$(which composer)" ]]; then
-				step "Installing Composer packages..."
-				for composer in $(<$location/seeds/composer); do
-					if test ! "$(composer global info | grep $composer)"; then
-						installing "Installing $composer"
-						composer global require $composer >/dev/null
-						cecho "${bold}✓ $composer package installed${normal}" $green
-						printf "\n"
+		if test "$(which hyper)"
+		then
+			# add shell env to hyper.js
+			step "Configuring Hyper with selected shell env..."
+			if [[ $shellChange =~ ^([yY])$ ]]; then
+				if [ $(grep "zsh" $location/storage/shell.log) ]; then
+					if [ $(grep "/usr/local/bin/bash" $HOME/.hyper.js) ]; then
+						sed -i "" -e "s/shell: '/usr/local/bin/bash'/shell: '$zshDIR'/g" ,
 					else
-						cecho "$composer has already been installed. Skipped..." $dim
-						printf "\n"
-					fi
-				done
-			else
-				cecho "Unable to install Composer packages. Please try again." $red
-			fi
-
-			###############################################################################
-			# Install WP-CLI and packages #
-			###############################################################################
-
-			heading "Installing WP-CLI and packages"
-
-			# Check if Composer is already installed.
-			# Check if restore folder exists
-			if [ ! -d "$location/pottingshed" ]; then
-				mkdir "$location/pottingshed"
-			fi
-			if [ ! -d "$location/pottingshed/wpcli" ]; then
-				mkdir "$location/pottingshed/wpcli"
-			fi
-
-			if [[ ! "$(which wp)" ]]; then
-				step "Installing WP-CLI..."
-				cd $location/pottingshed/wpcli
-				curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-				chmod +x wp-cli.phar
-
-				# Check if /usr/local/bin/wp exists.
-				if [ ! -d "/usr/local/bin/wp" ]; then
-					mkdir /usr/local/bin/wp
-				fi
-
-				# Move wp-cli.phar file to bin so we can just use the wp command.
-				mv wp-cli.phar /usr/local/bin/wp
-
-				# Switch directory back to project root.
-				cd $location
-
-				# Clean out wpcli subdirectory to preserve space.
-				rm -rf $location/pottingshed/wpcli
-
-				# Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
-				fix_php_memory
-
-				cecho "Successfully installed WP-CLI." $green
-			else
-				cecho "WP-CLI already installed. Skipping..." $dim
-			fi
-
-			if [[ "$(which wp)" ]]; then
-				step "Installing WP-CLI packages..."
-				for wp in $(<$location/seeds/wpcli); do
-					if test ! "$(wp package list | grep $wp)"; then
-						installing "Installing $wp"
-						wp package install $wp >/dev/null
-						cecho "${bold}✓ $wp package installed${normal}" $green
-						printf "\n"
-					else
-						cecho "$wp has already been installed. Skipped..." $dim
-						printf "\n"
-					fi
-				done
-				
-				cecho "Successfully installed WP-CLI packages." $green
-			else
-				cecho "Unable to install packages. Please try again." $red
-			fi
-			
-			###############################################################################
-			# Install Python packages #
-			###############################################################################
-
-			heading "Installing Python packages"
-
-			if test ! "$(pip list)"
-			then
-				cecho "Unable to install Python packages. Please try again." $red
-			else
-				step "Installing Python packages..."
-				pip install --upgrade pip
-				pip install --user pylint
-				pip install --user flake8
-				cecho "Successfully installed packages." $green
-			fi
-
-			###############################################################################
-			# Install Hyper.js packages and config #
-			###############################################################################
-
-			heading "Installing Hyper.js packages"
-
-			if test "$(which hyper)"
-			then
-				# add shell env to hyper.js
-				step "Configuring Hyper with selected shell env..."
-				if [[ $shellChange =~ ^([yY])$ ]]; then
-					if [ $(grep "zsh" $location/storage/shell.log) ]; then
-						if [ $(grep "/usr/local/bin/bash" $HOME/.hyper.js) ]; then
-							sed -i "" -e "s/shell: '/usr/local/bin/bash'/shell: '$zshDIR'/g" ,
-						else
-							sed -i "" -e "s/shell: '/bin/bash'/shell: '$zshDIR'/g" ,
-						fi
-					else
-						if [ $(grep "/usr/local/bin/zsh" $HOME/.hyper.js) ]; then
-							sed -i "" -e "s/shell: '/usr/local/bin/zsh'/shell: '$bashDIR'/g" ,
-						else
-							sed -i "" -e "s/shell: '/bin/zsh'/shell: '$bashDIR'/g" ,
-						fi
+						sed -i "" -e "s/shell: '/bin/bash'/shell: '$zshDIR'/g" ,
 					fi
 				else
-					if [ $(grep "zsh" $location/storage/shell.log) ]; then
-						sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g" ,
+					if [ $(grep "/usr/local/bin/zsh" $HOME/.hyper.js) ]; then
+						sed -i "" -e "s/shell: '/usr/local/bin/zsh'/shell: '$bashDIR'/g" ,
 					else
-						sed -i "" -e "s/shell: ''/shell: '$bashDIR'/g" ,
+						sed -i "" -e "s/shell: '/bin/zsh'/shell: '$bashDIR'/g" ,
 					fi
 				fi
-				cecho "Successfully configured Hyper shell env." $green
-
-				step "Installing Hyper packages..."
-				for hyper in $(<$location/seeds/hyper); do
-					if test ! "$(hyper list | grep $hyper)"; then
-						installing "Installing $hyper"
-						hyper i $hyper >/dev/null
-						cecho "${bold}✓ $hyper package installed${normal}" $green
-						printf "\n"
-					else
-						cecho "$hyper has already been installed. Skipped..." $dim
-						printf "\n"
-					fi
-				done
-				
-				cecho "Successfully installed Hyper packages." $green
 			else
-				cecho "Unable to install Hyper packages. Please check your Homebrew cask installation." $red
+				if [ $(grep "zsh" $location/storage/shell.log) ]; then
+					sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g" ,
+				else
+					sed -i "" -e "s/shell: ''/shell: '$bashDIR'/g" ,
+				fi
 			fi
+			cecho "Successfully configured Hyper shell env." $green
 
-			#############################################
-			# Set OSX Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #
-			#############################################
-
-			# Close any open System Preferences panes, to prevent them from overriding
-			# settings we’re about to change
-			osascript -e 'tell application "System Preferences" to quit'
-
-			# Ask for the administrator password upfront
-			sudo -v
-
-			# Keep-alive: update existing `sudo` time stamp until `.macos` has finished
-			while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+			step "Installing Hyper packages..."
+			for hyper in $(<$location/seeds/hyper); do
+				if test ! "$(hyper list | grep $hyper)"; then
+					installing "Installing $hyper"
+					hyper i $hyper >/dev/null
+					cecho "${bold}✓ $hyper package installed${normal}" $green
+					printf "\n"
+				else
+					cecho "$hyper has already been installed. Skipped..." $dim
+					printf "\n"
+				fi
+			done
 			
-			###############################################################################
-			# Adding Mac Preferences #
-			###############################################################################
+			cecho "Successfully installed Hyper packages." $green
+		else
+			cecho "Unable to install Hyper packages. Please check your Homebrew cask installation." $red
+		fi
 
-			heading "Configuring Mac settings"
-			
-			# Load macos file within the seeds directory into greenhouse file.
-			if [[ ! -d "$DIR" ]]; 
-			then
-				. "$location/seeds/macos"
+		#############################################
+		# Set OSX Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #
+		#############################################
 
-				cecho "All Mac settings configured and set. You may need to restart your terminal." $green
-				printf "\n"
-			else
-				printf "\n"
-				cecho "⚠️ $location/seeds/macos not found." $red
-				printf "\n"
-			fi
+		# Close any open System Preferences panes, to prevent them from overriding
+		# settings we’re about to change
+		osascript -e 'tell application "System Preferences" to quit'
 
-			cecho "All seeds are sown. May the plants be ever in your favour!" $green
-			printf '\n'
-			;;
-		2)
-			##############################
-			# Updating System #
-			##############################
-			heading 'Updating System'
-			
-			if [ ! $internet ];
-			then
-				cecho "No internet connection avaliable! Please connect to the internet when possible and try again." $red
-				exit;
-			fi
+		# Ask for the administrator password upfront
+		sudo -v
 
-			printf "
-			${bold}1) ${normal}All
-			${bold}2) ${normal}NPM/Yarn
-			${bold}3) ${normal}Node
-			${bold}4) ${normal}Brew
-			${bold}5) ${normal}Apps
-			${bold}6) ${normal}Composer
-			${bold}7) ${normal}Gems
-			${bold}8) ${normal}Ruby
-			${bold}9) ${normal}WP-CLI
-			\n
-			"
-			read -n 1 -s -r -p "> " update
+		# Keep-alive: update existing `sudo` time stamp until `.macos` has finished
+		while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+		
+		###############################################################################
+		# Adding Mac Preferences #
+		###############################################################################
 
-			if [[ $update = '' ]]; then
-				printf "${bold}Update aborted...${normal}\n"
-				exit;
-			else
-				case $choice in
-					2)
-						###############################################################################
-						# Updating NPM/Yarn packages #
-						###############################################################################
-						step "Updating NPM packages..."
-						read -p "Would you like to use Yarn or NPM? yarn/npm" updatePkg
+		heading "Configuring Mac settings"
+		
+		# Load macos file within the seeds directory into greenhouse file.
+		if [[ ! -d "$DIR" ]]; 
+		then
+			. "$location/seeds/macos"
 
-						if [ $updatePkg == 'yarn' ];
-						then
-							if test "$(which yarn)"
-							then
-								yarn global upgrade
-							else
-								cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
-								npm i -g npm
-								npm update -g
-							fi
-						else
-							npm i -g npm
-							npm update -g
-						fi
-						cecho "All $updatePkg packages updated." $green
-					;;
-					3)
-						###############################################################################
-						# Switching Node versions with NVM #
-						###############################################################################
-						step "Changing Node versions..."
+			cecho "All Mac settings configured and set. You may need to restart your terminal." $green
+			printf "\n"
+		else
+			printf "\n"
+			cecho "⚠️ $location/seeds/macos not found." $red
+			printf "\n"
+		fi
 
-						if [[ "$(which nvm)" ]];
-						then
-							nvm install node
-							nvm use node
-							nvm alias default node
-							nodeVersion=$(node -v)
-							cecho "Node version changed to $nodeVersion." $green
-						else
-							cecho "NVM not installed. Aborted!" $red
-						fi
-					;;
-					*)
-						###############################################################################
-						# Updating all #
-						###############################################################################
+		cecho "All seeds are sown. May the plants be ever in your favour!" $green
+		printf '\n'
+		;;
+	2)
+		##############################
+		# Updating System #
+		##############################
+		heading 'Updating System'
+		
+		if [ ! $internet ];
+		then
+			cecho "No internet connection avaliable! Please connect to the internet when possible and try again." $red
+			exit;
+		fi
 
-						# Update Homebrew
-						if test "$(which brew)"
-						then
-							step "Backing up Brew before update..."
-							brew bundle dump --file=${location}/storage/Brewfile.bkp
-							echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
-							cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
-							step "Updating Brew..."
-							brew update
-							brew upgrade
-							brew cask upgrade
-							brew cleanup -s
-							brew cleanup cask
-							if [ -f $HOME/Brewfile ];
-							then
-								brew bundle cleanup
-							fi
-							cecho "Successfully updated all Homebrew to the latest versions." $green
-						else
-							cecho "Can't find an installtion of Homebrew. Skipping..." $dim
-						fi
+		printf "
+		${bold}1) ${normal}All
+		${bold}2) ${normal}NPM/Yarn
+		${bold}3) ${normal}Node
+		${bold}4) ${normal}Brew
+		${bold}5) ${normal}Apps
+		${bold}6) ${normal}Composer
+		${bold}7) ${normal}Gems
+		${bold}8) ${normal}Ruby
+		${bold}9) ${normal}WP-CLI
+		\n
+		"
+		read -n 1 -s -r -p "> " update
 
-						# Update Ruby
-						read -p "Are you sure you would like to update Ruby to the latest version? Y/n" updateRuby
+		case $choice in
+			1)
+				###############################################################################
+				# Updating all #
+				###############################################################################
 
-						if [[ $updateRuby =~ ^([yY])$ ]];
-						then
-							if test "$(which rbenv)"
-							then
-								step "Updating Ruby..."
-								rubyVersion=$(rbenv install -l | grep -v - | tail -1)
-								rbenv install $rubyVersion
-								rbenv global $rubyVersion
-							else
-								cecho "Unable to update to the latest Ruby version." $dim
-								cecho "Please check your rbenv installation and try again. Skipping..." $dim
-							fi
-						else
-							cecho "Ruby update aborted." $red
-						fi
+				# Update Homebrew
+				if test "$(which brew)"
+				then
+					step "Backing up Brew before update..."
+					brew bundle dump --file=${location}/storage/Brewfile.bkp
+					echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
+					cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
+					step "Updating Brew..."
+					brew update
+					brew upgrade
+					brew cask upgrade
+					brew cleanup -s
+					cecho "Successfully updated all Homebrew to the latest versions." $green
+				else
+					cecho "Can't find an installtion of Homebrew. Skipping..." $dim
+				fi
 
-						# Update Gems
-						if test "$(gem -v)"
-						then
-							if [ -f $HOME/Gemfile ];
-							then
+				# Update Ruby
+				if test "$(which rbenv)"
+				then
+					step "Updating Ruby..."
+					rubyVersion=$(rbenv install -l | grep -v - | tail -1)
+					rbenv install $rubyVersion
+					rbenv global $rubyVersion
+				else
+					cecho "Unable to update to the latest Ruby version." $dim
+					cecho "Please check your rbenv installation and try again. Skipping..." $dim
+				fi
 
-								step "Backing up Ruby gems before update..."
-								cp $HOME/Gemfile $location/storage/Gemfile
-								cp $HOME/Gemfile.lock $location/storage/Gemfile.lock
-								step "Updating Ruby gems..."
-								bundle update
-								bundle clean
-								rbenv rehash
-							else
-								step "Backing up Ruby gems before update..."
-								gem list --no-versions >> $location/storage/gems.bkp
-								step "Updating Ruby gems..."
-								gem update --system
-								gem update
-								gem cleanup
-							fi
-							cecho "All gems successfully updated." $green
-						else
-							cecho "Can't find any gems, please check your Ruby installation. Skipping..." $dim
-						fi
-
-						# Update Composer
-						composer selfupdate
-						composer global upgrade
-
-						# Update WP-CLI
-						wp cli update
-						wp package update --all
-
-						# Update NVM
-						if [[ "$(which nvm)" ]];
-						then
-							nvm install node
-							nvm use node
-							nvm alias default node
-							nodeVersion=$(node -v)
-							cecho "Node version changed to $nodeVersion." $green
-						else
-							cecho "NVM not installed. Aborted!" $red
-						fi
-
-						# Update NPM
-						npm i -g npm
-						npm update -g
-
-						# Update Apple apps
-						sudo softwareupdate -i -a
-					;;
-				esac
-			fi
-			;;
-		3)
-			##############################
-			# Backing Up #
-			##############################
-			heading "Backing up packages"
-
-			if test ! "$(which brew)"
-			then
-				cecho "Unable to backup Homebrew. Please check your Homebrew installation." $red
-			else
-				step "Backing up Homebrew..."
-				brew bundle dump --file=${location}/storage/Brewfile.bkp
-				echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
-				brew cleanup -s
-				brew bundle cleanup
-				cecho "Successfully backed up all Homebrew formulaes, casks and mas installs." $green
-			fi
-
-			# Save gems to bkp file.
-			if test ! "$(gem -v)"
-			then
-				cecho "Unable to backup Ruby gems." $red
-			else
-				read -p "Would you like to backup with Bundler or run a standard gam backup? b/s" rubyGems
-				step "Backing up gems..."
-				if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
+				# Update Gems
+				if test "$(gem -v)"
 				then
 					if [ -f $HOME/Gemfile ];
 					then
-						cp $HOME/Gemfile $location/storage/Gemfile
-						cp $HOME/Gemfile.lock $location/storage/Gemfile.lock
+
+						step "Backing up Ruby gems before update..."
+						cp $HOME/Gemfile $location/storage/Gemfile.bkp
+						cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+						step "Updating Ruby gems..."
+						bundle update
 						bundle clean
+						rbenv rehash
 					else
-						cecho "Unable to locate Gemfile. Skipping backup..." $red
+						step "Backing up Ruby gems before update..."
+						gem list --no-versions >> $location/storage/gems.bkp
+						step "Updating Ruby gems..."
+						gem update --system
+						gem update
+						gem cleanup
+					fi
+					cecho "All gems successfully updated." $green
+				else
+					cecho "Can't find any gems, please check your Ruby installation. Skipping..." $dim
+				fi
+
+				# Update Composer
+				composer selfupdate
+				composer global upgrade
+
+				# Update WP-CLI
+				wp cli update
+				wp package update --all
+
+				# Update NVM
+				if [[ "$(which nvm)" ]];
+				then
+					step "Updating Node..."
+					nvm install node
+					nvm use node
+					nvm alias default node
+					nodeVersion=$(node -v)
+					cecho "Node version changed to $nodeVersion." $green
+				else
+					cecho "NVM not installed. Aborted!" $red
+				fi
+
+				# Update NPM
+				step "Backing up NPM packages before update..."
+				npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+				step "Updating packages..."
+
+				read -p "Would you like to use Yarn or NPM? yarn/npm" updatePkg
+
+				if [ $updatePkg == 'yarn' ];
+				then
+					if test "$(which yarn)"
+					then
+						yarn global upgrade
+					else
+						cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
+						npm i -g npm
+						npm update -g
 					fi
 				else
-					gem list --no-versions >> $location/storage/gems.bkp
-					gem cleanup
+					npm i -g npm
+					npm update -g
 				fi
-				cecho "Successfully backed up all gems." $green
-			fi
 
-			# Save npm modules to bkp file.
-			# todo: if npm directory exists and if node is installed.
-			step "Backing up npm modules..."
-			if [[ ! "$(npm -v)" ]]; then
-				cecho "Unable to backup NPM modules." $red
-			else
-				npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
-				cecho "Successfully backed up all npm modules." $green
-			fi
+				cecho "Packages successfully updated." $green
 
-			# Take a copy of composer.json
-			step "Backing up composer packages..."
-			if [[ ! "$(which composer)" ]]; then
-				cecho "Unable to backup Composer packages." $red
-			else
-				cp $HOME/.composer/composer.json $location/storage/composer.json
-				cp $HOME/.composer/composer.lock $location/storage/composer.lock
-				cecho "Successfully backed up all packages." $green
-			fi
-			
-			# Take a copy of wp-cli packages
-			step "Backing up wp-cli plugins..."
-			if [[ ! "$(which wp)" ]]; then
-				cecho "Unable to backup WP-CLI plugins." $red
-			else
-				cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-cli.json
-				cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-cli.lock
-				cecho "Successfully backed up all plugins." $green
-			fi
+				# Update Apple apps
+				step "Updating Mac Store apps..."
+				sudo softwareupdate -i -a
+				cecho "Apps updated" $green
 
-			printf '\n'
-			cecho "Safely stored for the Winter." $green
-			printf '\n'
+				printf "\n"
+				cecho "Your system has been successfully updated. Enjoy the fruits of spring and summer!" $green
 			;;
-		4)
-			##############################
-			# Restoring #
-			##############################
-			heading "Restoring packages"
+			2)
+				###############################################################################
+				# Updating NPM/Yarn packages #
+				###############################################################################
+				step "Updating NPM packages..."
+				read -p "Would you like to use Yarn or NPM? yarn/npm" updatePkg
 
-			# Check if restore folder exists
-			if [ ! -d "$location/pottingshed" ]; then
-				mkdir "$location/pottingshed"
-			fi
-
-			# Restoring Brews & mas
-			if test ! "$(which brew)"
-			then
-				cecho "Unable to restore Homebrew and mas. Please check your Homebrew and mas installations." $red
-			else
-				step "Restoring Homebrew..."
-
-				if [ -f $location/storage/Brewfile.bkp ];
+				if [ $updatePkg == 'yarn' ];
 				then
-					if [ ! -d "$location/pottingshed/brew" ]; then
-						mkdir "$location/pottingshed/brew"
-					fi
-
-					step "Restoring from Brewfile.bkp..."
-
-					if [ -f "$location/storage/Brewfile.lock.json.bkp" ]; then
-						read -p "Would you like to restore Brewfile.lock.json? Y/n" restoreBrewLock
-
-						if [[ $restoreBrewLock =~ ^([yY])$ ]];
-						then
-							mv $location/storage/Brewfile.lock.json.bkp $HOME/Brewfile.lock.json
-							cp $location/storage/Brewfile.bkp $HOME/Brewfile
-							cd $HOME
-							brew bundle
-							cd $location
-						fi
-					fi
-
-					if [ ! -f "$location/storage/Brewfile.lock.json.bkp" ] || [[ $restoreBrewLock =~ ^([nN])$ ]];
+					if test "$(which yarn)"
 					then
-						cp $location/storage/Brewfile.bkp $location/pottingshed/brew/Brewfile
-						cd $location/pottingshed/brew
+						yarn global upgrade
+					else
+						cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
+						npm i -g npm
+						npm update -g
+					fi
+				else
+					npm i -g npm
+					npm update -g
+				fi
+				cecho "All $updatePkg packages updated." $green
+			;;
+			3)
+				###############################################################################
+				# Switching Node versions with NVM #
+				###############################################################################
+				step "Changing Node versions..."
+
+				if [[ "$(which nvm)" ]];
+				then
+					nvm install node
+					nvm use node
+					nvm alias default node
+					nodeVersion=$(node -v)
+					cecho "Node version changed to $nodeVersion." $green
+				else
+					cecho "NVM not installed. Aborted!" $red
+				fi
+			;;
+			*)
+				printf "Update cancelled. But remember... ${blue}Winter is coming!${normal}\n"
+				printf '\n'
+				exit;
+			;;
+		esac
+		;;
+	3)
+		##############################
+		# Backing Up #
+		##############################
+		heading "Backing up packages"
+
+		if test ! "$(which brew)"
+		then
+			cecho "Unable to backup Homebrew. Please check your Homebrew installation." $red
+		else
+			step "Backing up Homebrew..."
+			brew bundle dump --file=${location}/storage/Brewfile.bkp
+			echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
+			brew cleanup -s
+			cecho "Successfully backed up all Homebrew formulaes, casks and mas installs." $green
+		fi
+
+		# Save gems to bkp file.
+		if test ! "$(gem -v)"
+		then
+			cecho "Unable to backup Ruby gems." $red
+		else
+			read -p "Would you like to backup with Bundler or run a standard gam backup? b/s" rubyGems
+			step "Backing up gems..."
+			if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
+			then
+				if [ -f $HOME/Gemfile ];
+				then
+					cp $HOME/Gemfile $location/storage/Gemfile
+					cp $HOME/Gemfile.lock $location/storage/Gemfile.lock
+					bundle clean
+				else
+					cecho "Unable to locate Gemfile. Skipping backup..." $red
+				fi
+			else
+				gem list --no-versions >> $location/storage/gems.bkp
+				gem cleanup
+			fi
+			cecho "Successfully backed up all gems." $green
+		fi
+
+		# Save npm modules to bkp file.
+		# todo: if npm directory exists and if node is installed.
+		step "Backing up npm modules..."
+		if [[ ! "$(npm -v)" ]]; then
+			cecho "Unable to backup NPM modules." $red
+		else
+			npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+			cecho "Successfully backed up all npm modules." $green
+		fi
+
+		# Take a copy of composer.json
+		step "Backing up composer packages..."
+		if [[ ! "$(which composer)" ]]; then
+			cecho "Unable to backup Composer packages." $red
+		else
+			cp $HOME/.composer/composer.json $location/storage/composer.json
+			cp $HOME/.composer/composer.lock $location/storage/composer.lock
+			cecho "Successfully backed up all packages." $green
+		fi
+		
+		# Take a copy of wp-cli packages
+		step "Backing up wp-cli plugins..."
+		if [[ ! "$(which wp)" ]]; then
+			cecho "Unable to backup WP-CLI plugins." $red
+		else
+			cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-cli.json
+			cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-cli.lock
+			cecho "Successfully backed up all plugins." $green
+		fi
+
+		printf '\n'
+		cecho "Safely stored for the Winter." $green
+		printf '\n'
+		;;
+	4)
+		##############################
+		# Restoring #
+		##############################
+		heading "Restoring packages"
+
+		# Check if restore folder exists
+		if [ ! -d "$location/pottingshed" ]; then
+			mkdir "$location/pottingshed"
+		fi
+
+		# Restoring Brews & mas
+		if test ! "$(which brew)"
+		then
+			cecho "Unable to restore Homebrew and mas. Please check your Homebrew and mas installations." $red
+		else
+			step "Restoring Homebrew..."
+
+			if [ -f $location/storage/Brewfile.bkp ];
+			then
+				if [ ! -d "$location/pottingshed/brew" ]; then
+					mkdir "$location/pottingshed/brew"
+				fi
+
+				step "Restoring from Brewfile.bkp..."
+
+				if [ -f "$location/storage/Brewfile.lock.json.bkp" ]; then
+					read -p "Would you like to restore Brewfile.lock.json? Y/n" restoreBrewLock
+
+					if [[ $restoreBrewLock =~ ^([yY])$ ]];
+					then
+						mv $location/storage/Brewfile.lock.json.bkp $HOME/Brewfile.lock.json
+						cp $location/storage/Brewfile.bkp $HOME/Brewfile
+						cd $HOME
 						brew bundle
 						cd $location
-						mv $location/pottingshed/brew/Brewfile $HOME/Brewfile
+					fi
+				fi
 
-						if [ ! -f "$HOME/Brewfile.lock.json" ]; then
-							mv $location/pottingshed/brew/Brewfile.lock.json $HOME/Brewfile.lock.json
-						fi
+				if [ ! -f "$location/storage/Brewfile.lock.json.bkp" ] || [[ $restoreBrewLock =~ ^([nN])$ ]];
+				then
+					cp $location/storage/Brewfile.bkp $location/pottingshed/brew/Brewfile
+					cd $location/pottingshed/brew
+					brew bundle
+					cd $location
+					mv $location/pottingshed/brew/Brewfile $HOME/Brewfile
+
+					if [ ! -f "$HOME/Brewfile.lock.json" ]; then
+						mv $location/pottingshed/brew/Brewfile.lock.json $HOME/Brewfile.lock.json
+					fi
+				fi
+
+				cecho "Successfully restored all Homebrew formulaes, casks and mas installs." $green
+			else
+				cecho "Unable to locate backup file. Skipping restore..." $red
+			fi
+		fi
+		
+		# Restoring gems
+		if test ! "$(gem -v)"
+		then
+			cecho "Unable to restore Ruby gems." $red
+		else
+			if [ ! -d "$location/pottingshed/gems" ]; then
+				mkdir "$location/pottingshed/gems"
+			fi
+
+			read -p "Would you like to restore with Bundler or standard gam restore? b/s" rubyGems
+			step "Restoring you Ruby gems..."
+			if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
+			then
+				if [ -f $location/storage/Gemfile ];
+				then
+					cp $location/storage/Gemfile $HOME
+					cp $location/storage/Gemfile.lock $HOME
+					bundle install --quiet
+					if [ $internet ];
+					then
+						bundle update --quiet
+					fi
+					rbenv rehash
+					cecho "Successfully restored all gems with Bundler, from Gemfile." $green
+				else
+					cecho "No Gemfile found. Unable to restore Ruby gems." $red
+				fi
+			else
+				if [ -f $location/storage/gems.bkp ];
+				then
+					cp $location/storage/gems.bkp $location/pottingshed/gems
+					cd $location/pottingshed/gems
+					xargs gem unpack < $location/pottingshed/gems.bkp
+
+					if [ $internet ];
+					then
+						xargs gem install < $location/pottingshed/gems.bkp
+						printf '\n'
+					else
+						cecho "No internet connection detected. Please update when possible. Continuing restore..." $yellow
+						xargs -I gemname gem build gemname/gemname.gemspec < $location/pottingshed/gems.bkp
+						printf '\n'
 					fi
 
-					cecho "Successfully restored all Homebrew formulaes, casks and mas installs." $green
+					cd $location
+					rm -rf $location/pottingshed/gems/* # Remove all unpacked gems to save storage.
+					cecho "Successfully restored all gems." $green
 				else
-					cecho "Unable to locate backup file. Skipping restore..." $red
+					cecho "No gem backup file found. Unable to restore Ruby gems." $red
 				fi
 			fi
 			
-			# Restoring gems
-			if test ! "$(gem -v)"
-			then
-				cecho "Unable to restore Ruby gems." $red
-			else
-				if [ ! -d "$location/pottingshed/gems" ]; then
-					mkdir "$location/pottingshed/gems"
-				fi
+		fi
 
-				read -p "Would you like to restore with Bundler or standard gam restore? b/s" rubyGems
-				step "Restoring you Ruby gems..."
-				if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
-				then
-					if [ -f $location/storage/Gemfile ];
-					then
-						cp $location/storage/Gemfile $HOME
-						cp $location/storage/Gemfile.lock $HOME
-						bundle install --quiet
-						if [ $internet ];
-						then
-							bundle update --quiet
-						fi
-						rbenv rehash
-						cecho "Successfully restored all gems with Bundler, from Gemfile." $green
-					else
-						cecho "No Gemfile found. Unable to restore Ruby gems." $red
-					fi
-				else
-					if [ -f $location/storage/gems.bkp ];
-					then
-						cp $location/storage/gems.bkp $location/pottingshed/gems
-						cd $location/pottingshed/gems
-						xargs gem unpack < $location/pottingshed/gems.bkp
-
-						if [ $internet ];
-						then
-							xargs gem install < $location/pottingshed/gems.bkp
-							printf '\n'
-						else
-							cecho "No internet connection detected. Please update when possible. Continuing restore..." $yellow
-							xargs -I gemname gem build gemname/gemname.gemspec < $location/pottingshed/gems.bkp
-							printf '\n'
-						fi
-
-						cd $location
-						rm -rf $location/pottingshed/gems/* # Remove all unpacked gems to save storage.
-						cecho "Successfully restored all gems." $green
-					else
-						cecho "No gem backup file found. Unable to restore Ruby gems." $red
-					fi
-				fi
-				
-			fi
-
-			cecho "It's been a long winter but let's get those plants flowring again." $green
-			printf '\n'
-			;;
-		5)
-			cd $HOME
-			echo $HOME
-			cd $location
-			echo $location
-			echo $PWD
-			;;
-		*)
-			printf "Thank you for using GreenHouse. Have a lovely sunny day and may the plants be ever in your favour.\n"
-			printf '\n'
-			exit;
-			;;
-	esac
-fi
+		cecho "It's been a long winter but let's get those plants flowring again." $green
+		printf '\n'
+		;;
+	5)
+		cd $HOME
+		echo $HOME
+		cd $location
+		echo $location
+		echo $PWD
+		;;
+	*)
+		printf "Thank you for using GreenHouse. Have a lovely sunny day and may the plants be ever in your favour.\n"
+		printf '\n'
+		exit;
+		;;
+esac

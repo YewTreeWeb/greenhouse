@@ -1,8 +1,10 @@
 @vue/cli
+apollo
 babel
 bower
 create-react-app
 critical
+docusaurus-init
 electron
 eslint
 eslint-plugin-react
@@ -36,6 +38,8 @@ jshint
 karma-cli
 less
 netlify-cli
+next
+now
 npm
 npm-clean
 shopify-cli
@@ -43,6 +47,7 @@ parcel-bundler
 prettier
 quickshot
 sassdoc
+serverless
 stylus
 typescript
 webpack

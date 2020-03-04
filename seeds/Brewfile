@@ -11,7 +11,6 @@ tap "universal-ctags/universal-ctags"
 tap "heroku/brew"
 tap "mongodb/brew"
 tap "bramstein/webfonttools"
-tap "github/gh"
 
 # Cask dependencies
 brew "mas"
@@ -22,6 +21,40 @@ cask "xquartz"
 # Note: Don't forget to add shells to `/etc/shells` before running `chsh`.
 brew "bash"
 brew "zsh"
+
+# CLI utilities
+# Don't forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
+brew "coreutils"
+brew "curl"
+#brew "findutils" # Install GNU `find`, `locate`, `updatedb`, and `xargs`, `g`-prefixed
+brew "git"
+brew "glib"
+brew "git-extras"
+brew "git-flow"
+brew "git-lfs"
+brew "github/gh/gh"
+brew "grep"
+brew "hub"
+brew "libiconv"
+brew "legit"
+#brew "gnu-sed", args: ["default-names"] # Install GNU `sed`, overwriting the built-in `sed`
+brew "moreutils" # Install more useful GNU utilities like `sponge`
+brew "openldap"
+brew "openssh"
+brew "openssl"
+brew "openssl@1.1"
+brew "pv"
+brew "pwgen"
+brew "ripgrep"
+brew "rsync"
+brew "screen"
+brew "ssh-copy-id"
+brew "starship"
+brew "the_silver_searcher"
+brew "tmux"
+brew "tree"
+brew "vim"
+brew "wget"
 
 # Programming languages & Dev tools
 # Installing Python/Ruby with Homebrew is unnecessary,
@@ -41,48 +74,16 @@ brew "pyenv" # Python
 brew "redis" # Redis DB
 brew "shellcheck" # Bash and sh script linting
 
-# CLI utilities
-# Don't forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
-brew "coreutils"
-brew "curl"
-#brew "findutils" # Install GNU `find`, `locate`, `updatedb`, and `xargs`, `g`-prefixed
-brew "git"
-brew "glib"
-brew "git-extras"
-brew "git-flow"
-brew "git-lfs"
-brew "github/gh/gh"
-brew "grep"
-brew "hub"
-brew "libiconv"
-#brew "gnu-sed", args: ["default-names"] # Install GNU `sed`, overwriting the built-in `sed`
-brew "moreutils" # Install more useful GNU utilities like `sponge`
-brew "openldap"
-brew "openssh"
-brew "openssl"
-brew "openssl@1.1"
-brew "pv"
-brew "pwgen"
-brew "ripgrep"
-brew "rsync"
-brew "screen"
-brew "ssh-copy-id"
-brew "starship"
-brew "themekit"
-brew "the_silver_searcher"
-brew "tmux"
-brew "tree"
-brew "vim"
-brew "wget"
-brew "yarn"
-
 # Other useful tools
 brew "highlight"
 brew "multimarkdown"
 brew "pandoc"
 brew "pkg-config"
 brew "reattach-to-user-namespace"
+brew "themekit"
 brew "xmlstarlet"
+brew "yarn"
+brew "watchman"
 
 # Image tools
 brew "advancecomp"
@@ -93,7 +94,7 @@ brew "joeyhoer/extras/gifv", args: ["HEAD"]
 brew "graphicsmagick"
 brew "guetzli"
 brew "icoutils"
-brew "imagemagick"
+brew "imagemagick", args: ["with-fftw", "with-hdri", "with-liblqr", "with-librsvg", "with-opencl", "with-openmp", "with-webp"]
 brew "imageworsener"
 brew "jhead"
 brew "joeyhoer/extras/apngdis"
@@ -151,7 +152,6 @@ brew "httpd"
 brew "dnsmasq"
 brew "mkcert"
 brew "nghttp2"
-brew "nginx"
 brew "nss"
 
 # Network tools
@@ -169,7 +169,6 @@ brew "sqlmap"
 # Install applications
 cask "adobe-acrobat-reader"
 cask "adapter"
-cask "airserver"
 cask "amazon-music"
 cask "amazon-photos"
 cask "android-studio"
@@ -179,7 +178,6 @@ cask "dash"
 cask "docker"
 cask "dropbox"
 cask "epubquicklook"
-cask "expressvpn"
 cask "google-backup-and-sync"
 cask "grammarly"
 cask "hyper"
@@ -242,13 +240,13 @@ brew "bramstein/webfonttools/sfnt2woff"
 brew "bramstein/webfonttools/sfnt2woff-zopfli"
 brew "bramstein/webfonttools/woff2"
 cask "font-anonymous-pro"
+cask "font-bebas-neue"
 cask "font-comic-neue"
 cask "font-dejavu-sans"
 cask "font-fira-code"
 cask "font-fira-mono-for-powerline"
 cask "font-firacode-nerd-font"
 cask "font-firacode-nerd-font-mono"
-cask "font-fira-sans"
 cask "font-jetbrains-mono"
 cask "font-jetbrainsmono-nerd-font"
 cask "font-jetbrainsmono-nerd-font-mono"
