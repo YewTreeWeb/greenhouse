@@ -412,9 +412,9 @@ ssl_check() {
     local domains=(
         "localhost"
         "*.localhost"
+        "$local_ip"
         "127.0.0.1"
         "::1"
-        "$local_ip"
     )
 
     if test "$(which mkcert)"
@@ -456,11 +456,11 @@ ssl_check() {
         # It appears mkcert bases its filenames off the number of domains passed after the first one.
         # This script predicts that filename, so it can copy it to Slate's default location.
         if [[ $count = 0 ]]; then
-            mv $HOME/localhost.pem $ssl_crt
-            mv $HOME/localhost-key.pem $ssl_key
+            mv $location/localhost.pem $ssl_crt
+            mv $location/localhost-key.pem $ssl_key
         else
-            mv $HOME/localhost+$count.pem $ssl_crt
-            mv $HOME/localhost+$count-key.pem $ssl_key
+            mv $location/localhost+$count.pem $ssl_crt
+            mv $location/localhost+$count-key.pem $ssl_key
         fi
     fi
 }
