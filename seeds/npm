@@ -41,6 +41,7 @@ netlify-cli
 next
 now
 npm
+npm-check-updates
 npm-clean
 shopify-cli
 parcel-bundler
