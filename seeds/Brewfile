@@ -1,5 +1,5 @@
 # Set global configuration arguments
-cask_args appdir: "/Applications"
+cask_args appdir: "~/Applications"
 
 # Taps
 tap "homebrew/services"
@@ -195,7 +195,6 @@ cask "megasync"
 cask "nucleo"
 cask "postman"
 cask "remembear"
-cask "rocket"
 cask "sequel-pro"
 cask "sketch"
 cask "sketchpacks"

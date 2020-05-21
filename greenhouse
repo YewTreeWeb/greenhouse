@@ -82,7 +82,7 @@ case $choice in
 			exit;
 		fi
 
-		#Check if system bin folder exists.
+		# Check if system bin folder exists.
 		if [ ! -d "$HOME/.bin/" ]; then
 			mkdir "$HOME/.bin"
 		fi
@@ -128,10 +128,6 @@ case $choice in
 
 		# Make sure system is running the latest Homebrew
 		brew upgrade 2> /dev/null
-
-		# Stopping and unloading system apache
-		sudo apachectl stop
-		sudo launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist 2>/dev/null
 
 		# Installing shell enviornment.
 		step "Setting up the Shell environment..."
@@ -223,18 +219,6 @@ case $choice in
 		if [ ! -f "$HOME/.gitignore" ];
 		then
 			cp $location/seeds/.gitignore $HOME
-		fi
-		if [ ! -f "$HOME/.gvimrc" ];
-		then
-			cp $location/seeds/.gvimrc $HOME
-		fi
-		if [ ! -f "$HOME/.vimrc" ];
-		then
-			cp $location/seeds/.vimrc $HOME
-		fi
-		if [ ! -d "$HOME/.vim" ];
-		then
-			cp $location/seeds/.vim $HOME
 		fi
 		if [ ! -f "$HOME/.editorconfig" ];
 		then
@@ -333,6 +317,10 @@ case $choice in
 			if test "$(which brew)"
 			then
 				step "Installing Brewfile..."
+				# Check if user local Applications folder exists.
+				if [ ! -d "$HOME/Applications" ]; then
+					mkdir "$HOME/Applications"
+				fi
 				cp $location/seeds/Brewfile $HOME
 				cd $HOME
 				brew bundle
@@ -355,16 +343,13 @@ case $choice in
 				# Run a Homebrew cleanup.
 				step "Cleaning up Homebrew..."
 				brew cleanup 2> /dev/null
-				brew cleanup cask 2> /dev/null
+				brew cleanup -s 2> /dev/null
 
 				cd $location
 			else
 				cecho "Homebrew may not be installed or you may not have internet. Please try again." $red
 			fi
 		fi
-
-		# Start brew apache
-		brew services start httpd
 
 		##############################
 		# Add git user config data #
@@ -373,11 +358,11 @@ case $choice in
 		heading "Adding user info to gitconfig..."
 
 		read -p "What username would you like to add to the gitconfig file? Default is your user account." gitUser
-		read -p "Enter the email you would like to add to the gitconfig file?" gitEmail
+		read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier." gitEmail
 
 		step "Adding Git config data..."
 		git config –-global user.name "${gitUser:-$USER}"
-		git config –-global user.email "${gitEmail}"
+		git config –-global user.email "${gitEmail:-$sshEmail}"
 		
 		cecho "Git user data has been successfully added to .gitconfig" $green
 
@@ -559,10 +544,11 @@ case $choice in
 
 			rbenv install $rubyVersion
 			rbenv global $rubyVersion
+			rbenv local $rubyVersion
 		fi
 
 		# Choose between bundler install or gem install.
-		read -p "Would you like to install global Ruby gems wiht Bundler or standard gem? b/s" rubyGems 
+		read -p "Would you like to install global Ruby gems with Bundler or standard gem? b/s" rubyGems 
 
 		if test ! "$(gem -v)"
 		then
