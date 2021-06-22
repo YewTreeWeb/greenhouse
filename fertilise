@@ -35,12 +35,8 @@ location="$(cd "$(dirname "$0")" && pwd)"
 
 # Shell environment variables
 zshDIR="$(command -v zsh)"
-bashDIR="$(command -v bash)"
-if [ $(grep "zsh" $location/storage/shell.log) ]; then
-    shellExports="$HOME/.zsh/exports.zsh"
-else
-    shellExports="$HOME/.bash/exports.sh"
-fi
+zshRC="$HOME/.zshrc"
+
 
 ### Text Formatting ###
 
@@ -146,7 +142,7 @@ admin_pass() {
 
 # Create and add content to SSH config file
 create_ssh_config() {
-touch ~/.ssh/config
+touch $HOME/.ssh/config
 cat <<EOT >> ~/.ssh/config
 	Host *
 		AddKeysToAgent yes
@@ -157,39 +153,11 @@ cat <<EOT >> ~/.ssh/config
 EOT
 }
 
-# Add NVM paths to shell profile
-setup_nvm() {
-
-cat <<EOT >> $shellExports
-# NVM
-export NVM_DIR="$HOME/.nvm"
-NVM_HOMEBREW="/usr/local/opt/nvm/nvm.sh"
-[ -s "$NVM_HOMEBREW" ] && \. "$NVM_HOMEBREW"
-export PATH="$HOME/.npm-packages/bin:$PATH"
-[ -x "$(command -v npm)" ] && export NODE_PATH=$NODE_PATH:`npm root -g`
-EOT
-
-if [ $(grep "bash" $location/storage/shell.log) ]; then
-    echo "[[ -r $NVM_DIR/bash_completion ]] && \. $NVM_DIR/bash_completion" >> $HOME/.bash/exports.sh
-fi
-
-}
-
 # If user wants to install NPM packages with Yarn, add global path to shell profile
 install_with_yarn() {
 
-cat <<EOT >> $shellExports
+cat <<EOT >> $zshRC
 export PATH="$(yarn global bin):$PATH"
-EOT
-
-}
-
-# If user chooses Bash as shell env, then remove Apple warning to use ZSH
-supress_zsh_warning() {
-
-cat <<EOT >> $shellExports
-# Supress zsh warning
-export BASH_SILENCE_DEPRECATION_WARNING=1
 EOT
 
 }
@@ -218,7 +186,7 @@ fi
 zsh_completion() {
 
 brew install zsh-completions
-cat <<EOT >> ~/.zshrc
+cat <<EOT >> $zshRC
 # ZSH Completion
 if type brew &>/dev/null; then
     FPATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
@@ -230,15 +198,89 @@ chmod go-w "/usr/local/share"
 
 }
 
-# Check if there is a .zshrc file. If not copy Greenhouse's zshrc.
-# If there is a zshrc then prepend the reference to the zprofile.
-create_zshrc() {
-    if [ ! -f "$HOME/.zshrc" ];
-    then
-        cp $location/seeds/.zshrc $HOME
-    else
-        echo -e '# Reference zprofile\n[ -n "$PS1" ] && source ~/.zprofile;' | cat - $HOME/.zshrc > temp && mv temp $HOME/.zshrc
-    fi
+# Add Starship to zshrc
+add_starship() {
+cat <<EOT >> $zshRC
+# Starship
+eval "$(starship init zsh)"
+EOT
+}
+
+install_zsh_dependecies() {
+
+# Clone ZSH dependency repos to `~/.zsh/` directory
+cd $HOME
+
+if [ ! -d "$HOME/.oh-my-zsh" ];
+then
+    # Download Oh My ZSH
+    step "Installing Oh My ZSH..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    cecho "Oh My ZSH installed." $green
+else
+    cecho "Oh My ZSH already installed. Skipping..." $dim
+fi
+
+# Check if zsh_plugins exists.
+if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
+    take "$HOME/.zsh_plugins"
+else
+    cd "$HOME/.zsh_plugins"
+fi
+
+if [ ! -d "$HOME/.zsh_plugins/fast-syntax-highlighting" ];
+then
+    # Install syntax highlighting
+    step "Installing syntax highlighting..."
+    git clone git@github.com:zdharma/fast-syntax-highlighting.git 2>/dev/null
+    cecho "Syntax highlighting installed." $green
+else
+    cecho "Syntax highlighting already installed. Skipping..." $dim
+fi
+
+if [ ! -f "$HOME/.zsh_plugins/completion.zsh" ];
+then
+    # Install completion plugin
+    step "Installing completion plugin..."
+    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
+    cecho "Completion plugin installed." $green
+else
+    cecho "Completion plugin already installed. Skipping..." $dim
+fi
+
+if [ ! -d "$HOME/.zsh_plugins/zsh-autosuggestions" ];
+then
+    # Download 'zsh-autosuggestions' plugin
+    step "Installing zsh-autosuggestions..."
+    git clone git@github.com:zsh-users/zsh-autosuggestions.git 2>/dev/null
+    cecho "zsh-autosuggestions installed." $green
+else
+    cecho "zsh-autosuggestions already installed. Skipping..." $dim
+fi
+
+if [ ! -f "$HOME/.zsh_plugins/history.zsh" ];
+then
+    # Download history config
+    step "Installing history config..."
+    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/history.zsh 2>/dev/null
+    cecho "History config installed." $green
+else
+    cecho "History config already installed. Skipping..." $dim
+fi
+
+if [ ! -f "$HOME/.zsh_plugins/key-bindings.zsh" ];
+then
+    # Download key bindings config
+    step "Installing key bindings config..."
+    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/key-bindings.zsh 2>/dev/null
+    cecho "Key bindings config installed." $green
+else
+    cecho "Key bindings config already installed. Skipping..." $dim
+fi
+
+# Go back to $location
+cd $location
+
 }
 
 # Install/Set shell env to ZSH
@@ -271,144 +313,25 @@ else
     cecho "Shell set to system default ZSH." $green
 fi
 
-# Create or modify .zshrc
-create_zshrc
-
-echo "zsh" > $location/storage/shell.log
-
+# Remove system generated .zshrc and use Greenhouse's zsh file
+if [ -f "$HOME/.zshrc" ];
+then
+    rm -rf $HOME/.zshrc
+fi
+cp $location/seeds/.zshrc $HOME
+install_zsh_dependecies
 }
 
-install_zsh_dependecies() {
-
-# Clone ZSH dependency repos to `~/.zsh/` directory
-cd $HOME/.zsh
-
-if [ ! -d "$HOME/.oh-my-zsh" ];
-then
-    # Download Oh My ZSH
-    step "Installing Oh My ZSH..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-    cecho "Oh My ZSH installed." $green
-else
-    cecho "Oh My ZSH already installed. Skipping..." $dim
-fi
-
-if [ ! -d "$HOME/.zsh/fast-syntax-highlighting" ];
-then
-    # Install syntax highlighting
-    step "Installing syntax highlighting..."
-    git clone git@github.com:zdharma/fast-syntax-highlighting.git 2>/dev/null
-    cecho "Syntax highlighting installed." $green
-else
-    cecho "Syntax highlighting already installed. Skipping..." $dim
-fi
-
-if [ ! -f "$HOME/.zsh/completion.zsh" ];
-then
-    # Install completion plugin
-    step "Installing completion plugin..."
-    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
-    cecho "Completion plugin installed." $green
-else
-    cecho "Completion plugin already installed. Skipping..." $dim
-fi
-
-if [ ! -d "$HOME/.zsh/zsh-autosuggestions" ];
-then
-    # Download 'zsh-autosuggestions' plugin
-    step "Installing zsh-autosuggestions..."
-    git clone git@github.com:zsh-users/zsh-autosuggestions.git 2>/dev/null
-    cecho "zsh-autosuggestions installed." $green
-else
-    cecho "zsh-autosuggestions already installed. Skipping..." $dim
-fi
-
-if [ ! -f "$HOME/.zsh/history.zsh" ];
-then
-    # Download history config
-    step "Installing history config..."
-    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/history.zsh 2>/dev/null
-    cecho "History config installed." $green
-else
-    cecho "History config already installed. Skipping..." $dim
-fi
-
-if [ ! -f "$HOME/.zsh/key-bindings.zsh" ];
-then
-    # Download key bindings config
-    step "Installing key bindings config..."
-    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/key-bindings.zsh 2>/dev/null
-    cecho "Key bindings config installed." $green
-else
-    cecho "Key bindings config already installed. Skipping..." $dim
-fi
-
-# Go back to $location
-cd $location
-
-}
-
-# Install/Set shell to bash
-install_bash() {
-
-if test "$(which brew)"
-then
-    if [ "$bashDIR" != '/usr/local/bin/bash' ];
-    then
-        brew install bash
-        # Switch to using brew-installed bash as default shell
-        if ! fgrep -q "${BREW_PREFIX}/bin/bash" /etc/shells; then
-            echo "${BREW_PREFIX}/bin/bash" | sudo tee -a /etc/shells;
-            chsh -s "${BREW_PREFIX}/bin/bash";
-        fi;
-    else
-        brew upgrade bash 2> /dev/null
-        cecho "Bash successfully updated to latest version." $green
-    fi
-
-    # Change shell to modern bash.
-    sudo chsh -s "$bashDIR" "$USER"
-
-    cecho "Shell set to Bash." $green
-else
-    # Use default location for shell env - /bin/bash
-    sudo chsh -s "$bashDIR" "$USER"
-    cecho "Shell set to system default Bash." $green
-fi
-
-# Check if there is a .bashrc file. If not copy Greenhouse's bashrc.
-# If there is a bashrc then prepend the reference to the bash_profile.
-if [ ! -f "$HOME/.bashrc" ];
-then
-    cp $location/seeds/.bashrc $HOME
-else
-    echo -e '# Reference bash_profile\n[ -n "$PS1" ] && source ~/.bash_profile;' | cat - $HOME/.bashrc > temp && mv temp $HOME/.bashrc
-fi
-
-# Check if bash-completion2 is installed
-if test "$(which brew)"
-then
-    if test "$(brew info bash-completion2)"
-    then
-        cecho "bash-completion already installed. Skipping..." $dim
-    else
-        brew install bash-completion2
-    fi
-fi
-
-echo "bash" > $location/storage/shell.log
-
-}
 
 # Check if system has an SSL if not create it.
 ssl_check() {
     local ssl="$HOME/.ssl";
     local ssl_crt="$ssl/server.crt"
     local ssl_key="$ssl/server.key"
-    
+
     local local_ip=$(ipconfig getifaddr $(route get default | grep interface | awk '{print $2}'))
     # local_ip=999.999.999 # (uncomment for testing)
-    
+
     local domains=(
         "localhost"
         "*.localhost"
@@ -431,7 +354,7 @@ ssl_check() {
         mkcert -install
         cecho "CA successfully installed." $green
     fi
-    
+
     if [[ ! -f $ssl_crt ]]; then
         cecho "Couldn't find an SSL certificate!" $red
         printf "\n"
@@ -444,15 +367,15 @@ ssl_check() {
         cecho "SSL certificate found. No need for new SSL. Skipping..." $dim
         printf "\n"
     fi
-    
+
     if [[ $make_key == true ]]; then
         step "Generating a new SSL certificate..."
         local count=$(( ${#domains[@]} - 1))
         mkcert ${domains[@]}
-    
+
         # Create Slate's default certificate directory, if it doesn't exist
         test ! -d $ssl && mkdir $ssls
-    
+
         # It appears mkcert bases its filenames off the number of domains passed after the first one.
         # This script predicts that filename, so it can copy it to Slate's default location.
         if [[ $count = 0 ]]; then
@@ -463,4 +386,14 @@ ssl_check() {
             mv $location/localhost+$count-key.pem $ssl_key
         fi
     fi
+}
+
+# Add aliases for WP-CLI to .zshrc
+zsh_wpcli_aliases() {
+cat <<EOT >> $zshRC
+# wp-cli quick update
+alias wp-update="wp core update && wp core language update"
+alias wp-asset-update="wp plugin update --all && wp theme update --all"
+alias wp-update-all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
+EOT
 }
