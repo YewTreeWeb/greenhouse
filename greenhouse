@@ -202,7 +202,7 @@ case $choice in
 		printf "\n"
 		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
 
-		if [[ -e "$HOME/.ssh/config" ]
+		if [[ -e "$HOME/.ssh/config" ]]
 		then
 			cecho "An SSH config file already exists. Skipping... " $dim
 		else
@@ -333,7 +333,7 @@ case $choice in
 			open "/Applications/App Store.app"
 			read -p "Has login completed successfully (y/n)? " loginConfirm
 
-			if [[ $loginConfirm != "${loginConfirm#[Yy]}" ] && [ -f $location/seeds/apps ]];
+			if [[ $loginConfirm != "${loginConfirm#[Yy]}" ]] && [[ -f $location/seeds/apps ]];
 			then
 				step "Installing Apple Store apps..."
 				for app in $(<$location/seeds/apps); do
@@ -681,6 +681,7 @@ case $choice in
 		fi
 
         if [[ $wordpresscli =~ ^([yY])$ ]];
+		then
             if [[ "$(which wp)" ]]; then
                 step "Installing WP-CLI packages..."
                 for wp in $(<$location/seeds/wpcli); do
@@ -818,21 +819,26 @@ case $choice in
 			exit;
 		fi
 
-		printf "
-		${bold}1) ${normal}All
-		${bold}2) ${normal}NPM/Yarn
-		${bold}3) ${normal}Node
-		${bold}4) ${normal}Brew
-		${bold}5) ${normal}Apps
-		${bold}6) ${normal}Composer
-		${bold}7) ${normal}Gems
-		${bold}8) ${normal}Ruby
-		${bold}9) ${normal}WP-CLI
-		\n
-		"
+		if [[ ! -d "$location/storage" ]];
+		then
+			mkdir $location/storage
+		fi
+
+printf "
+${bold}1) ${normal}All
+${bold}2) ${normal}NPM/Yarn
+${bold}3) ${normal}Node
+${bold}4) ${normal}Brew
+${bold}5) ${normal}Apps
+${bold}6) ${normal}Composer
+${bold}7) ${normal}Gems
+${bold}8) ${normal}Ruby
+${bold}9) ${normal}WP-CLI
+\n
+"
 		read -n 1 -s -r -p "> " update
 
-		case $choice in
+		case $update in
 			1)
 				###############################################################################
 				# Updating all #
@@ -847,7 +853,7 @@ case $choice in
 				if test "$(which brew)"
 				then
 					step "Backing up Brew before update..."
-					brew bundle dump --file=${location}/storage/Brewfile.bkp
+					HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
 					echo -e '# Set global configuration arguments\ncask_args appdir: "~/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
 					cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
 					step "Updating Brew..."
@@ -982,6 +988,7 @@ case $choice in
 
                 step "Backing up NPM packages before update..."
 				npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+				cecho "Successfully backed all NPM packages." $green
 
 				if [[ $updatePkg == 'yarn' ]];
 				then
@@ -1021,9 +1028,9 @@ case $choice in
 				if test "$(which brew)"
 				then
 					step "Backing up Brew before update..."
-					brew bundle dump --file=${location}/storage/Brewfile.bkp
-					echo -e '# Set global configuration arguments\ncask_args appdir: "~/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
+					HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
 					cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
+					cecho "Successfully backed all Homebrew packages." $green
 					step "Updating Brew..."
 					brew update
 					brew upgrade
@@ -1039,7 +1046,9 @@ case $choice in
 				# Updating macOS App Store apps #
 				###############################################################################
 				step "Updating Mac Store apps..."
-				sudo softwareupdate -i -a
+				sudo softwareupdate --all --install --force
+				# sudo rm -rf /Library/Developer/CommandLineTools
+  				# sudo xcode-select --install
 				cecho "Apps updated" $green
 			;;
 			6)
@@ -1051,6 +1060,7 @@ case $choice in
                     step "Backing up Composer installs before update..."
                     cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
                     cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+					cecho "Successfully backed all Composer packages." $green
                     composer selfupdate
                     composer global upgrade
                     cecho "All Composer installs successfully updated." $green
@@ -1069,6 +1079,7 @@ case $choice in
                 else
                     gem list --no-versions >> $location/storage/gems.bkp
                 fi
+				cecho "Successfully backed all gems." $green
 
 				if test ! "$(gem -v)"
                 then
@@ -1126,6 +1137,7 @@ case $choice in
                 else
                     gem list --no-versions >> $location/storage/gems.bkp
                 fi
+				cecho "Successfully backed all gems." $green
 
 				if test "$(which rbenv)"
 				then
@@ -1149,6 +1161,7 @@ case $choice in
                     step "Backing up WP-CLI packages before update..."
                     cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
                     cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+					cecho "Successfully backed all WP-CLI packages." $green
                     wp cli update
                     wp package update --all
                     cecho "All WP-CLI packages successfully updated." $green
@@ -1277,7 +1290,7 @@ case $choice in
 					fi
 				fi
 
-				if [[ ! -f "$location/storage/Brewfile.lock.json.bkp" ] || [[ $restoreBrewLock =~ ^([nN])$ ]];
+				if [[ ! -f "$location/storage/Brewfile.lock.json.bkp" ]] || [[ $restoreBrewLock =~ ^([nN])$ ]];
 				then
 					cp $location/storage/Brewfile.bkp $location/pottingshed/brew/Brewfile
 					cd $location/pottingshed/brew
