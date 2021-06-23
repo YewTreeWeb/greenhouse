@@ -59,7 +59,6 @@ printf "
  ${bold}2) ${normal}Update
  ${bold}3) ${normal}Backup
  ${bold}4) ${normal}Restore
- ${bold}5) ${normal}Testing
 \n
 "
 read -n 1 -s -r -p "> " choice
@@ -1353,13 +1352,6 @@ case $choice in
 
 		cecho "It's been a long winter but let's get those plants flowring again." $green
 		printf '\n'
-		;;
-	5)
-		cd $HOME
-		echo $HOME
-		cd $location
-		echo $location
-		echo $PWD
 		;;
 	*)
 		printf "Thank you for using GreenHouse. Have a lovely sunny day and may the plants be ever in your favour.\n"
