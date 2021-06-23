@@ -849,24 +849,37 @@ case $choice in
 				then
 					step "Backing up Brew before update..."
 					brew bundle dump --file=${location}/storage/Brewfile.bkp
-					echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
+					echo -e '# Set global configuration arguments\ncask_args appdir: "~/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
 					cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
 					step "Updating Brew..."
 					brew update
 					brew upgrade
-					brew cask upgrade
+					brew cleanup
 					brew cleanup -s
 					cecho "Successfully updated all Homebrew to the latest versions." $green
+                    printf '\n'
+					cecho "To reinstall bundles from backup remove the .bkp extension and run 'brew bundle'" $dim
 				else
 					cecho "Can't find an installtion of Homebrew. Skipping..." $dim
 				fi
 
 				# Update Ruby
+                step "Backing up Ruby gems before update..."
+                if [[ -f $HOME/Gemfile ]];
+                then
+                    cp $HOME/Gemfile $location/storage/Gemfile.bkp
+                    cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+                else
+                    gem list --no-versions >> $location/storage/gems.bkp
+                fi
+
 				if test "$(which rbenv)"
 				then
+
 					step "Updating Ruby..."
 					rubyVersion=$(rbenv install -l | grep -v - | tail -1)
 					rbenv install $rubyVersion
+					rbenv local $rubyVersion
 					rbenv global $rubyVersion
 				else
 					cecho "Unable to update to the latest Ruby version." $dim
@@ -878,17 +891,11 @@ case $choice in
 				then
 					if [[ -f $HOME/Gemfile ]];
 					then
-
-						step "Backing up Ruby gems before update..."
-						cp $HOME/Gemfile $location/storage/Gemfile.bkp
-						cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
 						step "Updating Ruby gems..."
 						bundle update
 						bundle clean
 						rbenv rehash
 					else
-						step "Backing up Ruby gems before update..."
-						gem list --no-versions >> $location/storage/gems.bkp
 						step "Updating Ruby gems..."
 						gem update --system
 						gem update
@@ -900,6 +907,9 @@ case $choice in
 				fi
 
 				# Update Composer
+                step "Backing up Composer installs before update..."
+                cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+                cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
 				composer selfupdate
 				composer global upgrade
 
