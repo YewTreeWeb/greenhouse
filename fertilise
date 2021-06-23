@@ -143,13 +143,25 @@ admin_pass() {
 # Create and add content to SSH config file
 create_ssh_config() {
 touch $HOME/.ssh/config
-cat <<EOT >> ~/.ssh/config
-	Host *
-		AddKeysToAgent yes
-		UseKeychain yes
-        ForwardAgent yes
-        IdentitiesOnly yes
-        IdentityFile ~/.ssh/id_rsa
+cat <<EOT >> $HOME/.ssh/config
+Host *
+    AddKeysToAgent yes
+    UseKeychain yes
+    ForwardAgent yes
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_rsa
+EOT
+}
+
+# Add Github host to ssh config
+add_github_host () {
+cat <<EOT >> $HOME/.ssh/config
+
+Host github
+    HostName github.com
+    User $ghusername
+    PreferredAuthentications publickey
+    IdentityFile ~/.ssh/id_rsa
 EOT
 }
 
