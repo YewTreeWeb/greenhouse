@@ -857,8 +857,6 @@ case $choice in
 					brew cleanup
 					brew cleanup -s
 					cecho "Successfully updated all Homebrew to the latest versions." $green
-                    printf '\n'
-					cecho "To reinstall bundles from backup remove the .bkp extension and run 'brew bundle'" $dim
 				else
 					cecho "Can't find an installtion of Homebrew. Skipping..." $dim
 				fi
@@ -907,32 +905,48 @@ case $choice in
 				fi
 
 				# Update Composer
-                step "Backing up Composer installs before update..."
-                cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
-                cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
-				composer selfupdate
-				composer global upgrade
+                if [[ ! "$(which composer)" ]];
+                then
+                    step "Backing up Composer installs before update..."
+                    cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+                    cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+                    composer selfupdate
+                    composer global upgrade
+                    cecho "All Composer installs successfully updated." $green
+                else
+                    cecho "Unable to update Composer. Skipping..." $dim
+                fi
 
 				# Update WP-CLI
-				wp cli update
-				wp package update --all
+                if [[ ! "$(which wp)" ]];
+                then
+                    step "Backing up WP-CLI packages before update..."
+                    cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+                    cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+                    wp cli update
+                    wp package update --all
+                    cecho "All WP-CLI packages successfully updated." $green
+                else
+                    cecho "Unable to update WP-CLI. Skipping..." $dim
+                fi
 
 				# Update NVM
 				if [[ "$(which nvm)" ]];
 				then
-					step "Updating Node..."
-					nvm install node
+                    step "Backing up NPM packages before update..."
+				    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+
+					step "Updating Node and NPM..."
+                    nodeVersion=$(node -v)
+					nvm install node --reinstall-packages-from=$nodeVersion --latest-npm
 					nvm use node
 					nvm alias default node
-					nodeVersion=$(node -v)
-					cecho "Node version changed to $nodeVersion." $green
+					cecho "Node version successfully updated and changed to $(node -v)." $green
 				else
-					cecho "NVM not installed. Aborted!" $red
+					cecho "NVM not updated or changed. Aborted!" $red
 				fi
 
 				# Update NPM
-				step "Backing up NPM packages before update..."
-				npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
 				step "Updating packages..."
 
 				read -p "Would you like to use Yarn or NPM? yarn/npm" updatePkg
@@ -944,11 +958,9 @@ case $choice in
 						yarn global upgrade
 					else
 						cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
-						npm i -g npm
 						npm update -g
 					fi
 				else
-					npm i -g npm
 					npm update -g
 				fi
 
@@ -969,6 +981,9 @@ case $choice in
 				step "Updating NPM packages..."
 				read -p "Would you like to use Yarn or NPM? yarn/npm" updatePkg
 
+                step "Backing up NPM packages before update..."
+				npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+
 				if [[ $updatePkg == 'yarn' ]];
 				then
 					if test "$(which yarn)"
@@ -976,11 +991,9 @@ case $choice in
 						yarn global upgrade
 					else
 						cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
-						npm i -g npm
 						npm update -g
 					fi
 				else
-					npm i -g npm
 					npm update -g
 				fi
 				cecho "All $updatePkg packages updated." $green
@@ -993,14 +1006,156 @@ case $choice in
 
 				if [[ "$(which nvm)" ]];
 				then
-					nvm install node
+					nodeVersion=$(node -v)
+					nvm install node --reinstall-packages-from=$nodeVersion --latest-npm
 					nvm use node
 					nvm alias default node
-					nodeVersion=$(node -v)
-					cecho "Node version changed to $nodeVersion." $green
+					cecho "Node version successfully updated and changed to $(node -v)." $green
 				else
-					cecho "NVM not installed. Aborted!" $red
+					cecho "Node version not updated or switched. Aborted!" $red
 				fi
+			;;
+			4)
+				###############################################################################
+				# Updating and upgrading Homebrew #
+				###############################################################################
+				if test "$(which brew)"
+				then
+					step "Backing up Brew before update..."
+					brew bundle dump --file=${location}/storage/Brewfile.bkp
+					echo -e '# Set global configuration arguments\ncask_args appdir: "~/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
+					cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
+					step "Updating Brew..."
+					brew update
+					brew upgrade
+					brew cleanup
+					brew cleanup -s
+					cecho "Successfully updated all Homebrew to the latest versions." $green
+				else
+					cecho "Can't find an installtion of Homebrew. Skipping..." $dim
+				fi
+			;;
+			5)
+				###############################################################################
+				# Updating macOS App Store apps #
+				###############################################################################
+				step "Updating Mac Store apps..."
+				sudo softwareupdate -i -a
+				cecho "Apps updated" $green
+			;;
+			6)
+				###############################################################################
+				# Updating Composer #
+				###############################################################################
+				if [[ ! "$(which composer)" ]];
+                then
+                    step "Backing up Composer installs before update..."
+                    cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+                    cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+                    composer selfupdate
+                    composer global upgrade
+                    cecho "All Composer installs successfully updated." $green
+                else
+                    cecho "Unable to update Composer. Skipping..." $dim
+                fi
+			;;
+			7)
+				###############################################################################
+				# Updating Ruby gems #
+				###############################################################################
+                if [[ -f $HOME/Gemfile ]];
+                then
+                    cp $HOME/Gemfile $location/storage/Gemfile.bkp
+                    cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+                else
+                    gem list --no-versions >> $location/storage/gems.bkp
+                fi
+
+				if test ! "$(gem -v)"
+                then
+                    cecho "Unable to install Ruby gems.\n" $red
+                else
+                    step "Installing Ruby gems..."
+                    if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
+                    then
+                        if test ! "$(gem list bundler)"; then
+                            gem install bundler
+                        fi
+                        cd $HOME
+                        bundle init
+                        for bundle in $(<$location/seeds/bundles); do
+                            if test ! "$(bundle list | grep $bundle)"; then
+                                installing "Installing $bundle"
+                                bundle add $bundle >/dev/null
+                                cecho "${bold}✓ $bundle gem installed${normal}" $green
+                                printf "\n"
+                            else
+                                cecho "$bundle has already been installed. Skipped..." $dim
+                                printf "\n"
+                            fi
+                        done
+                        rbenv rehash
+                        cd $location
+                        printf "\n"
+                        cecho "Successfully installed Ruby gems with Bundler." $green
+                    else
+                        for gem in $(<$location/seeds/gems); do
+                            if test ! "$(gem list | grep $gem)"; then
+                                installing "Installing $gem"
+                                gem install $gem >/dev/null
+                                cecho "${bold}✓ $gem gem installed${normal}" $green
+                                printf "\n"
+                            else
+                                cecho "$gem has already been installed. Skipped..." $dim
+                                printf "\n"
+                            fi
+                        done
+
+                        cecho "Successfully installed Ruby gems." $green
+                    fi
+                fi
+			;;
+			8)
+				###############################################################################
+				# Updating Ruby #
+				###############################################################################
+				step "Backing up Ruby gems before update..."
+                if [[ -f $HOME/Gemfile ]];
+                then
+                    cp $HOME/Gemfile $location/storage/Gemfile.bkp
+                    cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+                else
+                    gem list --no-versions >> $location/storage/gems.bkp
+                fi
+
+				if test "$(which rbenv)"
+				then
+
+					step "Updating Ruby..."
+					rubyVersion=$(rbenv install -l | grep -v - | tail -1)
+					rbenv install $rubyVersion
+					rbenv local $rubyVersion
+					rbenv global $rubyVersion
+				else
+					cecho "Unable to update to the latest Ruby version." $dim
+					cecho "Please check your rbenv installation and try again. Skipping..." $dim
+				fi
+			;;
+			9)
+				###############################################################################
+				# Updating WP-CLI #
+				###############################################################################
+				if [[ ! "$(which wp)" ]];
+                then
+                    step "Backing up WP-CLI packages before update..."
+                    cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+                    cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+                    wp cli update
+                    wp package update --all
+                    cecho "All WP-CLI packages successfully updated." $green
+                else
+                    cecho "Unable to update WP-CLI. Skipping..." $dim
+                fi
 			;;
 			*)
 				printf "Update cancelled. But remember... ${blue}Winter is coming!${normal}\n"
