@@ -70,7 +70,7 @@ brew "go"
 brew "heroku/brew/heroku"
 brew "rbenv" # Ruby
 brew "ruby-build"
-brew "node" # Also installs `npm`
+# brew "node" # Also installs `npm`
 brew "nvm" # Node version manager
 brew "multimarkdown" # Markdown
 brew "mongodb-community" # MongoDB

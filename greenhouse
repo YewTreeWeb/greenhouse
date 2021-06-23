@@ -185,11 +185,10 @@ case $choice in
 
 		# Check if ssh folder exists.
 		if [[ ! -d "$HOME/.ssh/" ]]; then
-			mkdir $HOME/.ssh
+			take $HOME/.ssh
 		fi
 
 		step "Creating key and adding to agent."
-		cd $HOME/.ssh
 		read -p 'Input email for ssh key: ' sshEmail
 		ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
 		eval "$(ssh-agent -s)"
@@ -256,10 +255,12 @@ case $choice in
 			if test "$(which brew)"
 			then
 				step "Installing Brewfile..."
+
 				# Check if user local Applications folder exists.
 				if [[ ! -d "$HOME/Applications" ]]; then
 					mkdir "$HOME/Applications"
 				fi
+
 				cp $location/seeds/Brewfile $HOME
 				cd $HOME
 				brew bundle
@@ -278,6 +279,9 @@ case $choice in
 
 				# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
 				ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
+
+                # Run Brew doctor
+                brew doctor
 
 				# Run a Homebrew cleanup.
 				step "Cleaning up Homebrew..."
@@ -328,7 +332,7 @@ case $choice in
 					if test ! "$(mas list | grep $app)"; then
 						installing "Installing $app"
 						mas install $app >/dev/null
-						cecho "${bold}✓ $app gem installed${normal}" $green
+						cecho "${bold}✓ $app installed${normal}" $green
 						printf "\n"
 					else
 						cecho "$app has already been installed. Skipped..." $dim
@@ -352,15 +356,13 @@ case $choice in
 
 		# Check if Composer is already installed.
 		# Check if restore folder exists
+        # Move into pottingshed/apps
 		if [[ ! -d "$location/pottingshed" ]]; then
-			mkdir "$location/pottingshed"
+			take "$location/pottingshed"
 		fi
 		if [[ ! -d "$location/pottingshed/apps" ]]; then
-			mkdir "$location/pottingshed/apps"
+			take "$location/pottingshed/apps"
 		fi
-
-		# Move into pottingshed/apps
-		cd $location/pottingshed/apps
 
 		if [[ ! -f "/Applications/Popcorn-Time.app" ]];
 		then
@@ -399,21 +401,21 @@ case $choice in
 			cecho "IconJar already installed. Skipping..." $dim
 		fi
 
-        if [[ ! -f "/Applications/Amphetamine Enhancer.app" ]];
+		if [[ ! -f "/Applications/Amphetamine Enhancer.app" ]];
 		then
-			step "Downloading Amphetamine Enhancer..."
-			read -p "Would you like to install Amphetamine Enhancer? Y/n" iconjar1
-			if [[ $iconjar1 =~ ^([yY])$ ]];
+            read -p "Would you like to download Amphetamine Enhancer? Y/n" amphetamine
+            if [[ $amphetamine =~ ^([yY])$ ]];
 			then
-				cd $HOME/Applications
-				wget https://github.com/x74353/Amphetamine-Enhancer/raw/master/Releases/Current/Amphetamine%20Enhancer.dmg 2> /dev/null
-				cd $location
-				cecho "Successfully downloaded and installed Amphetamine Enhancer." $green
+			    step "Downloading File..."
+                cd $HOME/Downloads
+                wget https://github.com/x74353/Amphetamine-Enhancer/raw/master/Releases/Current/Amphetamine%20Enhancer.dmg 2> /dev/null
+                cd $location/pottingshed/apps
+                cecho "Downloaded Amphetamine Enhancer into Downloads folder" $green
 			else
-				cecho "Amphetamine Enhancer installation aborted. Skipping..." $dim
+				cecho "Amphetamine Enhancer download aborted. Skipping..." $dim
 			fi
 		else
-			cecho "Amphetamine Enhancer already installed. Skipping..." $dim
+			cecho "Amphetamine Enhancer already downloaded. Skipping..." $dim
 		fi
 
 		if [[ ! -f "/Applications/FileZilla.app" ]];
@@ -422,8 +424,9 @@ case $choice in
             if [[ $filezilla =~ ^([yY])$ ]];
 			then
 			    step "Downloading File..."
+                cd $HOME/Downloads
                 wget https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg 2> /dev/null
-                mv FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg /Downloads
+                cd $location/pottingshed/apps
                 cecho "Downloaded FileZilla into Downloads folder" $green
 			else
 				cecho "FileZilla download aborted. Skipping..." $dim
@@ -509,12 +512,16 @@ case $choice in
 			rubyVersion=$(rbenv install -l | grep -v - | tail -1)
 
 			rbenv install $rubyVersion
-			rbenv global $rubyVersion
+
+            # Verify the state of your rbenv installation
+            wget -q https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-doctor -O- | bash
+
 			rbenv local $rubyVersion
+			rbenv global $rubyVersion
 		fi
 
 		# Choose between bundler install or gem install.
-		read -p "Would you like to install global Ruby gems with Bundler or standard gem? b/s" rubyGems
+		read -p "Would you like to install global Ruby gems with Bundler or with gem? b/s" rubyGems
 
 		if test ! "$(gem -v)"
 		then
@@ -566,28 +573,23 @@ case $choice in
 
 		heading "Installing Composer and packages"
 
-		# Check if Composer is already installed.
-		# Check if subdirectoy folder exists
-		if [[ ! -d "$location/pottingshed" ]]; then
-			mkdir "$location/pottingshed"
-		fi
-		if [[ ! -d "$location/pottingshed/composer" ]]; then
-			mkdir "$location/pottingshed/composer"
-		fi
-
 		if [[ ! "$(which composer)" ]]; then
+            # Check if Composer is already installed.
+            # Check if subdirectoy folder exists
+            if [[ ! -d "$location/pottingshed" ]]; then
+                take "$location/pottingshed"
+            fi
+            if [[ ! -d "$location/pottingshed/composer" ]]; then
+                take "$location/pottingshed/composer"
+            fi
+
 			step "Installing Composer..."
 
-			cd $location/pottingshed/composer
+			# cd $location/pottingshed/composer
 			php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-			php -r "if (hash_file('sha384', 'composer-setup.php') === 'c5b9b6d368201a9db6f74e2611495f369991b72d9c8cbd3ffbc63edff210eb73d46ffbfce88669ad33695ef77dc76976') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
-			php composer-setup.php
-			php -r "unlink('composer-setup.php');"
-
-			# Check if /usr/local/bin/composer exists.
-			if [[ ! -d "/usr/local/bin/composer" ]]; then
-				sudo mkdir /usr/local/bin/composer
-			fi
+            php -r "if (hash_file('sha384', 'composer-setup.php') === '756890a4488ce9024fc62c56153228907f1545c228516cbf63f885e036d37e9a59d27d63f46af1d4d07ee0f76181c7d3') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
+            php composer-setup.php
+            php -r "unlink('composer-setup.php');"
 
 			# Move composer file to bin so it can be a global command.
 			sudo mv composer.phar /usr/local/bin/composer
@@ -626,28 +628,22 @@ case $choice in
 
 		heading "Installing WP-CLI and packages"
 
-		# Check if Composer is already installed.
-		# Check if restore folder exists
-		if [[ ! -d "$location/pottingshed" ]]; then
-			mkdir "$location/pottingshed"
-		fi
-		if [[ ! -d "$location/pottingshed/wpcli" ]]; then
-			mkdir "$location/pottingshed/wpcli"
-		fi
-
 		if [[ ! "$(which wp)" ]]; then
 			read -p 'Would you like to install WP-CLI? Y/n' wordpresscli
             if [[ $wordpresscli =~ ^([yY])$ ]];
             then
+                # Check if Composer is already installed.
+                # Check if restore folder exists
+                if [[ ! -d "$location/pottingshed" ]]; then
+                    take "$location/pottingshed"
+                fi
+                if [[ ! -d "$location/pottingshed/wpcli" ]]; then
+                    take "$location/pottingshed/wpcli"
+                fi
+
                 step "Installing WP-CLI..."
-                cd $location/pottingshed/wpcli
                 curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
                 chmod +x wp-cli.phar
-
-                # Check if /usr/local/bin/wp exists.
-                if [[ ! -d "/usr/local/bin/wp" ]]; then
-                    sudo mkdir /usr/local/bin/wp
-                fi
 
                 # Move wp-cli.phar file to bin so we can just use the wp command.
                 sudo mv wp-cli.phar /usr/local/bin/wp
@@ -733,9 +729,7 @@ case $choice in
 		then
 			# add shell env to hyper.js
 			step "Configuring Hyper with selected shell env..."
-			if [[ $(grep "zsh" $location/storage/shell.log) ]]; then
-                sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g"
-            fi
+            sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g"
 			cecho "Successfully configured Hyper shell env." $green
 
 			step "Installing Hyper packages..."
