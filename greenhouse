@@ -824,18 +824,18 @@ case $choice in
 			mkdir $location/storage
 		fi
 
-printf "
-${bold}1) ${normal}All
-${bold}2) ${normal}NPM/Yarn
-${bold}3) ${normal}Node
-${bold}4) ${normal}Brew
-${bold}5) ${normal}Apps
-${bold}6) ${normal}Composer
-${bold}7) ${normal}Gems
-${bold}8) ${normal}Ruby
-${bold}9) ${normal}WP-CLI
-\n
-"
+    printf "
+    ${bold}1) ${normal}All
+    ${bold}2) ${normal}NPM/Yarn
+    ${bold}3) ${normal}Node
+    ${bold}4) ${normal}Brew
+    ${bold}5) ${normal}Apps
+    ${bold}6) ${normal}Composer
+    ${bold}7) ${normal}Gems
+    ${bold}8) ${normal}Ruby
+    ${bold}9) ${normal}WP-CLI
+    \n
+    "
 		read -n 1 -s -r -p "> " update
 
 		case $update in
@@ -1049,7 +1049,7 @@ ${bold}9) ${normal}WP-CLI
 				sudo softwareupdate --all --install --force
 				# sudo rm -rf /Library/Developer/CommandLineTools
   				# sudo xcode-select --install
-				cecho "Apps updated" $green
+				cecho "All Apple apps updated" $green
 			;;
 			6)
 				###############################################################################
@@ -1187,9 +1187,9 @@ ${bold}9) ${normal}WP-CLI
 			cecho "Unable to backup Homebrew. Please check your Homebrew installation." $red
 		else
 			step "Backing up Homebrew..."
-			brew bundle dump --file=${location}/storage/Brewfile.bkp
-			echo -e '# Set global configuration arguments\ncask_args appdir: "/Applications"\n' | cat - $location/storage/Brewfile.bkp > temp && mv temp $location/storage/Brewfile.bkp
-			brew cleanup -s
+			HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+            cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
+			brew cleanup
 			cecho "Successfully backed up all Homebrew formulaes, casks and mas installs." $green
 		fi
 
@@ -1242,8 +1242,8 @@ ${bold}9) ${normal}WP-CLI
 		if [[ ! "$(which wp)" ]]; then
 			cecho "Unable to backup WP-CLI plugins." $red
 		else
-			cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-cli.json
-			cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-cli.lock
+			cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json
+			cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock
 			cecho "Successfully backed up all plugins." $green
 		fi
 
