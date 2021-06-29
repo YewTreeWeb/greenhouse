@@ -1,9 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 ### Variables ###
 
-count=1
-
+# Colours
 reset="\033[0m"
 highlight="\033[41m\033[97m"
 dot="\033[31m▸ $reset"
@@ -24,19 +23,20 @@ normal=$(tput sgr0)
 underline="\e[37;4m"
 indent="   "
 
-sierra=10.12.2
-catalina=10.15
 
 internet=false
-
 env=null
 
-# Get full directory name of this script
-cwd="$(cd "$(dirname "$0")" && pwd)"
+# Save Homebrew’s installed location.
+BREW_PREFIX="$(brew --prefix)"
 
-# Home location
-# location='${HOME}/greenhouse/'
-location='${PWD}'
+# Get full directory name of this script
+location="$(cd "$(dirname "$0")" && pwd)"
+
+# Shell environment variables
+zshDIR="$(command -v zsh)"
+zshRC="$HOME/.zshrc"
+
 
 ### Text Formatting ###
 
@@ -96,17 +96,13 @@ get_os_version() {
 
     local os=""
     local version=""
-
     os="$(get_os)"
 
     if [ "$os" == "macOS" ]; then
         version="$(sw_vers -productVersion)"
-    elif [ "$os" == "ubuntu" ]; then
-        version="$(lsb_release -d | cut -f2 | cut -d' ' -f2)"
     fi
 
     echo $version
-
 }
 
 # Check if the current session has access to the internet.
@@ -143,68 +139,273 @@ admin_pass() {
 }
 
 ### Misc ###
+
+# Create and add content to SSH config file
 create_ssh_config() {
-touch ~/.ssh/config
-cat <<EOT >> ~/.ssh/config
-	Host *
-		AddKeysToAgent yes
-		UseKeychain yes
-        ForwardAgent yes
-        IdentitiesOnly yes
-        IdentityFile ~/.ssh/id_rsa
+touch $HOME/.ssh/config
+cat <<EOT >> $HOME/.ssh/config
+Host *
+    AddKeysToAgent yes
+    UseKeychain yes
+    ForwardAgent yes
+    IdentitiesOnly yes
+    IdentityFile ~/.ssh/id_rsa
 EOT
 }
 
-setup_nvm() {
-local shellEnv=''
+# Add Github host to ssh config
+add_github_host () {
+cat <<EOT >> $HOME/.ssh/config
 
-if [ $(grep "zsh" $location/storage/shell.log) ]; then
-    shellEnv='~/.zsh_modules/.exports'
-else
-    shellEnv='~/.bash_modules/.exports'
-fi
-
-if [ ! $(grep "nvm" $location/seeds/brews) ];
-then
-cat <<EOT >> $shellEnv
-# NVM
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-export PATH="$HOME/.npm-packages/bin:$PATH"
+Host github
+    HostName github.com
+    User $ghusername
+    PreferredAuthentications publickey
+    IdentityFile ~/.ssh/id_rsa
 EOT
-else
-cat <<EOT >> $shellEnv
-# NVM
-export NVM_DIR=~/.nvm
-export PATH="$HOME/.npm-packages/bin:$PATH"
-source $(brew --prefix nvm)/nvm.sh
-EOT
-fi
-
 }
 
+# If user wants to install NPM packages with Yarn, add global path to shell profile
 install_with_yarn() {
 
-local shellEnv=''
-
-if [ $(grep "zsh" $location/storage/shell.log) ]; then
-    shellEnv='~/.zsh_modules/.exports'
-else
-    shellEnv='~/.bash_modules/.exports'
-fi
-
-cat <<EOT >> $shellEnv
+cat <<EOT >> $zshRC
 export PATH="$(yarn global bin):$PATH"
 EOT
 
 }
 
-supress_zsh_warning() {
+# Find PHP memory files and change the limit to a higher amount
+fix_php_memory() {
 
-cat <<EOT >> ~/.bash_profile/.exports
-# Supress zsh warning
-export BASH_SILENCE_DEPRECATION_WARNING=1
+local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
+local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
+
+if [ -d "/usr/local/etc/php/$phpVersion/" ];
+then
+    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
+    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
+fi
+
+if [ -d "/usr/local/etc/php/$phpShortVersion/" ];
+then
+    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
+    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
+fi
+
+}
+
+# Install and setup ZSH completions
+zsh_completion() {
+
+brew install zsh-completions
+cat <<EOT >> $zshRC
+# ZSH Completion
+if type brew &>/dev/null; then
+    FPATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
+fi
 EOT
+rm -f ~/.zcompdump; compinit
+chmod go-w "${BREW_PREFIX}/share"
+chmod go-w "/usr/local/share"
 
+}
+
+# Add Starship to zshrc
+add_starship() {
+cat <<EOT >> $zshRC
+# Starship
+eval "$(starship init zsh)"
+EOT
+}
+
+install_zsh_dependecies() {
+
+# Clone ZSH dependency repos to `~/.zsh/` directory
+cd $HOME
+
+if [ ! -d "$HOME/.oh-my-zsh" ];
+then
+    # Download Oh My ZSH
+    step "Installing Oh My ZSH..."
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    cecho "Oh My ZSH installed." $green
+else
+    cecho "Oh My ZSH already installed. Skipping..." $dim
+fi
+
+# Check if zsh_plugins exists.
+if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
+    take "$HOME/.zsh_plugins"
+else
+    cd "$HOME/.zsh_plugins"
+fi
+
+if [ ! -d "$HOME/.zsh_plugins/fast-syntax-highlighting" ];
+then
+    # Install syntax highlighting
+    step "Installing syntax highlighting..."
+    git clone git@github.com:zdharma/fast-syntax-highlighting.git 2>/dev/null
+    cecho "Syntax highlighting installed." $green
+else
+    cecho "Syntax highlighting already installed. Skipping..." $dim
+fi
+
+if [ ! -f "$HOME/.zsh_plugins/completion.zsh" ];
+then
+    # Install completion plugin
+    step "Installing completion plugin..."
+    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
+    cecho "Completion plugin installed." $green
+else
+    cecho "Completion plugin already installed. Skipping..." $dim
+fi
+
+if [ ! -d "$HOME/.zsh_plugins/zsh-autosuggestions" ];
+then
+    # Download 'zsh-autosuggestions' plugin
+    step "Installing zsh-autosuggestions..."
+    git clone git@github.com:zsh-users/zsh-autosuggestions.git 2>/dev/null
+    cecho "zsh-autosuggestions installed." $green
+else
+    cecho "zsh-autosuggestions already installed. Skipping..." $dim
+fi
+
+if [ ! -f "$HOME/.zsh_plugins/history.zsh" ];
+then
+    # Download history config
+    step "Installing history config..."
+    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/history.zsh 2>/dev/null
+    cecho "History config installed." $green
+else
+    cecho "History config already installed. Skipping..." $dim
+fi
+
+if [ ! -f "$HOME/.zsh_plugins/key-bindings.zsh" ];
+then
+    # Download key bindings config
+    step "Installing key bindings config..."
+    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/key-bindings.zsh 2>/dev/null
+    cecho "Key bindings config installed." $green
+else
+    cecho "Key bindings config already installed. Skipping..." $dim
+fi
+
+# Go back to $location
+cd $location
+
+}
+
+# Install/Set shell env to ZSH
+install_zsh() {
+
+if test "$(which brew)"
+then
+    if [ "$zshDIR" != '/usr/local/bin/zsh' ];
+    then
+        brew install zsh
+
+        # Switch to using brew-installed zsh as default shell
+        if ! fgrep -q "${BREW_PREFIX}/bin/zsh" /etc/shells; then
+            echo "${BREW_PREFIX}/bin/zsh" | sudo tee -a /etc/shells;
+            chsh -s "${BREW_PREFIX}/bin/zsh";
+        fi;
+    else
+        brew upgrade zsh 2> /dev/null
+        cecho "ZSH successfully updated to latest version." $green
+    fi
+
+    # Change shell to modern zsh.
+    sudo chsh -s "$zshDIR" "$USER"
+
+    cecho "Shell set to ZSH." $green
+else
+    # Use default location for shell env - /bin/zsh
+    sudo chsh -s "$zshDIR" "$USER"
+
+    cecho "Shell set to system default ZSH." $green
+fi
+
+# Remove system generated .zshrc and use Greenhouse's zsh file
+if [ -f "$HOME/.zshrc" ];
+then
+    rm -rf $HOME/.zshrc
+fi
+cp $location/seeds/.zshrc $HOME
+install_zsh_dependecies
+}
+
+
+# Check if system has an SSL if not create it.
+ssl_check() {
+    local ssl="$HOME/.ssl";
+    local ssl_crt="$ssl/server.crt"
+    local ssl_key="$ssl/server.key"
+
+    local local_ip=$(ipconfig getifaddr $(route get default | grep interface | awk '{print $2}'))
+    # local_ip=999.999.999 # (uncomment for testing)
+
+    local domains=(
+        "localhost"
+        "*.localhost"
+        "$local_ip"
+        "127.0.0.1"
+        "::1"
+    )
+
+    if test "$(which mkcert)"
+    then
+        step "Installing mkcert local CA..."
+        mkcert -install
+        cecho "CA successfully installed." $green
+    else
+        step "mkcert and nss not installed. Installing..."
+        brew install mkcert nss
+        cecho "mkcert & nss installed." $green
+        printf "\n"
+        step "Installing mkcert local CA..."
+        mkcert -install
+        cecho "CA successfully installed." $green
+    fi
+
+    if [[ ! -f $ssl_crt ]]; then
+        cecho "Couldn't find an SSL certificate!" $red
+        printf "\n"
+        local make_key=true
+    elif [[ ! $(openssl x509 -noout -text -in $ssl_crt | grep $local_ip) ]]; then
+        cecho "Your IP Address has changed!" $yellow
+        printf "\n"
+        local make_key=true
+    else
+        cecho "SSL certificate found. No need for new SSL. Skipping..." $dim
+        printf "\n"
+    fi
+
+    if [[ $make_key == true ]]; then
+        step "Generating a new SSL certificate..."
+        local count=$(( ${#domains[@]} - 1))
+        mkcert ${domains[@]}
+
+        # Create Slate's default certificate directory, if it doesn't exist
+        test ! -d $ssl && mkdir $ssls
+
+        # It appears mkcert bases its filenames off the number of domains passed after the first one.
+        # This script predicts that filename, so it can copy it to Slate's default location.
+        if [[ $count = 0 ]]; then
+            mv $location/localhost.pem $ssl_crt
+            mv $location/localhost-key.pem $ssl_key
+        else
+            mv $location/localhost+$count.pem $ssl_crt
+            mv $location/localhost+$count-key.pem $ssl_key
+        fi
+    fi
+}
+
+# Add aliases for WP-CLI to .zshrc
+zsh_wpcli_aliases() {
+cat <<EOT >> $zshRC
+# wp-cli quick update
+alias wp-update="wp core update && wp core language update"
+alias wp-asset-update="wp plugin update --all && wp theme update --all"
+alias wp-update-all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
+EOT
 }
