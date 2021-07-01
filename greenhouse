@@ -292,6 +292,33 @@ case $choice in
 				# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
 				ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
 
+                # Install Shopify
+                cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
+                read -p "Would you like to install the Shopify CLI, Theme Kit or both? B/s/t/n" whichShopifyCli
+
+                if [[ $whichShopifyCli =~ ^([sS])$ ]];
+                then
+                    brew tap shopify/shopify
+                    brew install shopify-cli
+                    cecho "Shopify CLI successfully installed" $green
+                    printf "\n"
+                elif [[ $whichShopifyCli =~ ^([tT])$ ]];
+                then
+                    brew tap shopify/shopify
+                    brew install themekit
+                    cecho "Theme Kit successfully installed" $green
+                    printf "\n"
+                elif [[ $whichShopifyCli =~ ^([bB])$ ]];
+                then
+                    brew tap shopify/shopify
+                    brew install shopify-cli
+                    brew install themekit
+                    cecho "Shopify CLI and Theme Kit successfully installed" $green
+                    printf "\n"
+                else
+                    cecho "Shopify CLI and Theme Kit installation aborted. Skipping..." $dim
+                fi
+
                 # Run Brew doctor
                 brew doctor
 
