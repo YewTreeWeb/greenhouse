@@ -80,6 +80,7 @@ brew "postgres" # Postgres DB
 brew "pyenv" # Python
 brew "redis" # Redis DB
 brew "shellcheck" # Bash and sh script linting
+brew "shopify-cli"
 brew "themekit"
 
 ## Other useful tools
