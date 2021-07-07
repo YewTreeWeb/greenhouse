@@ -12,7 +12,6 @@ tap "homebrew/cask-versions"
 tap "homebrew/core"
 tap "homebrew/services"
 tap "mongodb/brew"
-tap "shopify/shopify"
 tap "universal-ctags/universal-ctags"
 
 ## Cask dependencies
@@ -37,7 +36,6 @@ brew "glib"
 brew "git-extras"
 brew "git-flow"
 brew "git-lfs"
-brew "github/gh/gh"
 brew "grep"
 brew "hub"
 brew "libiconv"
@@ -80,8 +78,6 @@ brew "postgres" # Postgres DB
 brew "pyenv" # Python
 brew "redis" # Redis DB
 brew "shellcheck" # Bash and sh script linting
-brew "shopify-cli"
-brew "themekit"
 
 ## Other useful tools
 brew "highlight"
@@ -232,12 +228,7 @@ cask "colorpicker-skalacolor"
 
 ## Fonts
 cask "font-fira-code"
-cask "font-fira-mono-for-powerline"
-cask "font-firacode-nerd-font"
-cask "font-firacode-nerd-font-mono"
 cask "font-jetbrains-mono"
-cask "font-jetbrainsmono-nerd-font"
-cask "font-jetbrainsmono-nerd-font-mono"
 
 ## mas apps
 # mas "Affinity Designer", id: 824171161

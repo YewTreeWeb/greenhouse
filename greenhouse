@@ -81,6 +81,12 @@ case $choice in
 			exit;
 		fi
 
+		# Make sure you user/local exists.
+		if [[ ! -d "/usr/local" ]]; then
+			sudo mkdir "/usr/local"
+			# sudo chflags norestricted "/usr/local"
+		fi
+
 		# Check if system bin folder exists.
 		if [[ ! -d "$HOME/.bin/" ]]; then
 			mkdir "$HOME/.bin"
@@ -89,12 +95,6 @@ case $choice in
 		# Check if system sbin folder exists.
 		if [[ ! -d "$HOME/.sbin/" ]]; then
 			mkdir "$HOME/.sbin"
-		fi
-
-		# Make sure you user/local exists.
-		if [[ ! -d "/usr/local" ]]; then
-			sudo mkdir "/usr/local"
-			sudo chflags norestricted "/usr/local"
 		fi
 
 		# Check if xcode is installed. If not install it.
@@ -119,14 +119,19 @@ case $choice in
 		fi
 
 		# Remove Old brew-cask if found.
-		if brew list | grep -Fq brew-cask; then
-			step "Uninstalling old Homebrew-Cask..."
-			brew uninstall --force brew-cask
-			cecho "Homebrew-Cask uninstalled!" $green
-		fi
+		# if brew list | grep -Fq brew-cask; then
+		# 	step "Uninstalling old Homebrew Cask..."
+		# 	brew uninstall --force brew-cask
+		# 	cecho "Homebrew-Cask uninstalled!" $green
+		# fi
 
 		# Make sure system is running the latest Homebrew
-		brew upgrade 2> /dev/null
+		printf "Updating Homebrew..."
+		brew update 2> /dev/null
+		# while [[ -z "$(! brew update 2> /dev/null)" ]];
+		# 	do printf "...";
+		# 	sleep 1
+		# done
 
 		# Installing shell enviornment.
 		step "Setting up the Shell environment..."
@@ -216,7 +221,7 @@ case $choice in
 		# Reference new-computer github account
 		#############################################
 
-        read -p "Would you like to use Github for your remote git repo? Y/n" useGithub
+        read -p "Would you like to use Github for your remote git repo? Y/n " useGithub
 
         if [[ $useGithub =~ ^([yY])$ ]];
         then
@@ -884,13 +889,13 @@ case $choice in
 					step "Backing up Brew before update..."
 					if [[ ! -f ${location}/storage/Brewfile.bkp ]];
 					then
-						HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+						brew bundle dump --file=${location}/storage/Brewfile.bkp
 					else
 						read -p "There is a current Brewfile backup. Would you like to overwrite it? Y/n " $newBrewfile
 						if [[ $newBrewfile =~ ^([yY])$ ]];
 						then
 							rm -rf ${location}/storage/Brewfile.bkp
-							HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+							brew bundle dump --file=${location}/storage/Brewfile.bkp
 						else
 							cecho "Homebrew backup already exists. Skipping..." $dim
 							printf "\n"
@@ -1090,7 +1095,22 @@ case $choice in
 				if [[ "$(which nvm)" ]];
 				then
                     step "Backing up NPM packages before update..."
-				    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                    if [[ -f $location/storage/npm.bkp ]];
+                    then
+                        read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
+                        if [[ $newNPM =~ ^([yY])$ ]];
+                        then
+                            rm -rf $location/storage/npm.bkp
+                            npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                        else
+                            cecho "NPM backup already exists. Skipping..." $dim
+                            printf "\n"
+                        fi
+                    else
+				        npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                    fi
+                    cecho "NPM packages successfully updated." $green
+					printf "\n"
 
 					step "Updating Node and NPM..."
                     nodeVersion=$(node -v)
@@ -1098,8 +1118,10 @@ case $choice in
 					nvm use node
 					nvm alias default node
 					cecho "Node version successfully updated and changed to $(node -v)." $green
+                    printf "\n"
 				else
 					cecho "NVM not updated or changed. Aborted!" $red
+                    printf "\n"
 				fi
 
 				# Update NPM
@@ -1128,6 +1150,7 @@ case $choice in
 				cecho "Mac apps updated" $green
 
 				printf "\n"
+				printf "\n"
 				cecho "Your system has been successfully updated. Enjoy the fruits of spring and summer!" $green
 			;;
 			2)
@@ -1135,11 +1158,25 @@ case $choice in
 				# Updating NPM/Yarn packages #
 				###############################################################################
 				step "Updating NPM packages..."
-				read -p "Would you like to use Yarn or NPM? yarn/npm" updatePkg
+				read -p "Would you like to use Yarn or NPM to update your packages? yarn/npm" updatePkg
 
                 step "Backing up NPM packages before update..."
-				npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
-				cecho "Successfully backed all NPM packages." $green
+				if [[ -f $location/storage/npm.bkp ]];
+                then
+                    read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
+                    if [[ $newNPM =~ ^([yY])$ ]];
+                    then
+                        rm -rf $location/storage/npm.bkp
+                        npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                    else
+                        cecho "NPM backup already exists. Skipping..." $dim
+                        printf "\n"
+                    fi
+                else
+                    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                fi
+                cecho "NPM packages successfully updated." $green
+                printf "\n"
 
 				if [[ $updatePkg == 'yarn' ]];
 				then
@@ -1154,6 +1191,7 @@ case $choice in
 					npm update -g
 				fi
 				cecho "All $updatePkg packages updated." $green
+                printf "\n"
 			;;
 			3)
 				###############################################################################
@@ -1169,7 +1207,7 @@ case $choice in
 					nvm alias default node
 					cecho "Node version successfully updated and changed to $(node -v)." $green
 				else
-					cecho "Node version not updated or switched. Aborted!" $red
+					cecho "NVM NOT FOUND! Node version not updated or switched. Aborted!" $red
 				fi
 			;;
 			4)
@@ -1181,13 +1219,13 @@ case $choice in
 					step "Backing up Brew before update..."
 					if [[ ! -f ${location}/storage/Brewfile.bkp ]];
 					then
-						HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+						brew bundle dump --file=${location}/storage/Brewfile.bkp
 					else
 						read -p "There is a current Brewfile backup. Would you like to overwrite it? Y/n " $newBrewfile
 						if [[ $newBrewfile =~ ^([yY])$ ]];
 						then
 							rm -rf ${location}/storage/Brewfile.bkp
-							HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+							brew bundle dump --file=${location}/storage/Brewfile.bkp
 						else
 							cecho "Homebrew backup aborted. Skipping..." $dim
 							printf "\n"
@@ -1528,8 +1566,22 @@ case $choice in
 		if [[ ! "$(npm -v)" ]]; then
 			cecho "Unable to backup NPM modules." $red
 		else
-			npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
-			cecho "Successfully backed up all npm modules." $green
+			if [[ -f $location/storage/npm.bkp ]];
+            then
+                read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
+                if [[ $newNPM =~ ^([yY])$ ]];
+                then
+                    rm -rf $location/storage/npm.bkp
+                    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                else
+                    cecho "NPM backup already exists. Skipping..." $dim
+                    printf "\n"
+                fi
+            else
+                npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+            fi
+            cecho "NPM packages successfully updated." $green
+            printf "\n"
 		fi
 
 		# Take a copy of composer.json
@@ -1613,8 +1665,6 @@ case $choice in
 					cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
 				fi
 			fi
-			wp cli update
-			wp package update --all
 			cecho "All WP-CLI packages successfully backed up." $green
 			printf "\n"
 		else
@@ -1623,7 +1673,7 @@ case $choice in
 		fi
 
 		printf '\n'
-		cecho "Safely stored for the Winter." $green
+		cecho "Ah that feeling when you know all your plants are safely stored for the Winter." $green
 		printf '\n'
 		;;
 	4)
@@ -1747,3 +1797,15 @@ case $choice in
 		exit;
 		;;
 esac
+
+# Make script a global command
+if [[ ! -d "/usr/local/bin/greenhouse" ]];
+then
+	printf '\n'
+	heading "Making Greenhouse global"
+	cp -r $location /usr/local/bin
+	chmod +x /usr/local/bin/greenhouse/greenhouse
+	printf "Thank you for using GreenHouse. You can now easily check on your plants from anywhere. Have a lovely sunny day and may the plants be ever in your favour.\n"
+	printf '\n'
+	exit;
+fi

@@ -105,7 +105,10 @@ alias .....="cd ../../../.."
 alias ~="cd ~" # `cd` is probably faster to type though
 alias -- -="cd -"
 
-# source zprofile
+# Run Greenhouse script globally
+alias greenhouse="/usr/local/bin/greenhouse/greenhouse"
+
+# Source zprofile
 alias refresh='source ~/.zshrc'
 
 # zprofile
