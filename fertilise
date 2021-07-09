@@ -23,7 +23,6 @@ normal=$(tput sgr0)
 underline="\e[37;4m"
 indent="   "
 
-
 internet=false
 env=null
 
@@ -235,7 +234,8 @@ fi
 
 # Check if zsh_plugins exists.
 if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
-    take "$HOME/.zsh_plugins"
+    mkdir "$HOME/.zsh_plugins"
+    cd "$HOME/.zsh_plugins"
 else
     cd "$HOME/.zsh_plugins"
 fi
@@ -310,7 +310,12 @@ then
             chsh -s "${BREW_PREFIX}/bin/zsh";
         fi;
     else
-        brew upgrade zsh 2> /dev/null
+		printf "Updating ZSH..."
+		brew upgrade zsh 2> /dev/null
+		# while [[ -z "$(! brew upgrade zsh 2> /dev/null)" ]];
+		# 	do printf "...";
+		# 	sleep 1
+		# done
         cecho "ZSH successfully updated to latest version." $green
     fi
 
@@ -325,15 +330,41 @@ else
     cecho "Shell set to system default ZSH." $green
 fi
 
-# Remove system generated .zshrc and use Greenhouse's zsh file
-if [ -f "$HOME/.zshrc" ];
+# Backup system .zshrc
+if [[ -f $HOME/.zshrc ]];
 then
-    rm -rf $HOME/.zshrc
+	step "Backing up system .zshrc..."
+	if [[ ! -d "${location}/storage" ]];
+	then
+		mkdir ${location}/storage
+	fi
+
+	if [[ -f $location/storage/.zshrc.bkp ]];
+	then
+		read -p "There is a current ZSH backup. Would you like to overwrite it? Y/n " $newZsh
+		if [[ $newZsh =~ ^([yY])$ ]];
+		then
+			rm -rf $location/storage/.zshrc.bkp
+			cp $HOME/.zshrc $location/storage/.zshrc.bkp
+		else
+			cecho ".zshrc backup already exists. Skipping..." $dim
+			printf "\n"
+		fi
+	else
+		cp $HOME/.zshrc $location/storage/.zshrc.bkp
+	fi
+	cecho ".zshrc backup successful." $green
 fi
-cp $location/seeds/.zshrc $HOME
+
+# Remove system generated .zshrc and use Greenhouse's zsh file
+# step "Replacing system .zshrc with Greenhouse's .zshrc"
+# if [ -f $HOME/.zshrc ];
+# then
+#     rm -rf $HOME/.zshrc
+# fi
+# cp $location/seeds/.zshrc $HOME
 install_zsh_dependecies
 }
-
 
 # Check if system has an SSL if not create it.
 ssl_check() {

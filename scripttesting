@@ -1,0 +1,10 @@
+#!/bin/sh
+location="$(cd "$(dirname "$0")" && pwd)"
+cd $HOME
+pwd
+echo $$
+cd $location
+echo "hello ${location}"
+pwd
+echo $$
+cp -r $location $HOME/Sites
