@@ -12,7 +12,6 @@ tap "homebrew/cask-versions"
 tap "homebrew/core"
 tap "homebrew/services"
 tap "mongodb/brew"
-tap "shopify/shopify"
 tap "universal-ctags/universal-ctags"
 
 ## Cask dependencies
@@ -80,8 +79,6 @@ brew "postgres" # Postgres DB
 brew "pyenv" # Python
 brew "redis" # Redis DB
 brew "shellcheck" # Bash and sh script linting
-brew "shopify-cli"
-brew "themekit"
 
 ## Other useful tools
 brew "highlight"
