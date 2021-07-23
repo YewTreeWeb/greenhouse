@@ -3,8 +3,11 @@ location="$(cd "$(dirname "$0")" && pwd)"
 cd $HOME
 pwd
 echo $$
+if test $(brew bundle); then
+	printf "Hello Brew"
+fi
 cd $location
 echo "hello ${location}"
 pwd
 echo $$
-cp -r $location $HOME/Sites
+# cp -r $location $HOME/Sites

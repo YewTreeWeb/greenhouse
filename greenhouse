@@ -89,12 +89,12 @@ case $choice in
 
 		# Check if system bin folder exists.
 		if [[ ! -d "$HOME/.bin/" ]]; then
-			mkdir "$HOME/.bin"
+			sudo mkdir "$HOME/.bin"
 		fi
 
 		# Check if system sbin folder exists.
 		if [[ ! -d "$HOME/.sbin/" ]]; then
-			mkdir "$HOME/.sbin"
+			sudo mkdir "$HOME/.sbin"
 		fi
 
 		# Check if xcode is installed. If not install it.
@@ -116,22 +116,21 @@ case $choice in
 			cecho "Homebrew successfully installed." $green
 		else
 			cecho "Homebrew already installed. Skipping..." $dim
+			brew cleanup -q 2> /dev/null
+			brew cleanup -s -q 2> /dev/null
 		fi
 
 		# Remove Old brew-cask if found.
-		# if brew list | grep -Fq brew-cask; then
-		# 	step "Uninstalling old Homebrew Cask..."
-		# 	brew uninstall --force brew-cask
-		# 	cecho "Homebrew-Cask uninstalled!" $green
-		# fi
+		if brew list | grep -Fq brew-cask;
+		then
+			step "Uninstalling old Homebrew Cask..."
+			brew uninstall --force brew-cask
+			cecho "Homebrew-Cask uninstalled!" $green
+		fi
 
 		# Make sure system is running the latest Homebrew
 		printf "Updating Homebrew..."
-		brew update 2> /dev/null
-		# while [[ -z "$(! brew update 2> /dev/null)" ]];
-		# 	do printf "...";
-		# 	sleep 1
-		# done
+		brew update --force 2> /dev/null
 
 		# Installing shell enviornment.
 		step "Setting up the Shell environment..."
@@ -190,8 +189,9 @@ case $choice in
 
 		# Check if ssh folder exists.
 		if [[ ! -d "$HOME/.ssh/" ]]; then
-			take $HOME/.ssh
+			mkdir $HOME/.ssh
 		fi
+		cd $HOME/.ssh
 
 		step "Creating key and adding to agent."
 		read -p 'Input email for ssh key: ' sshEmail
@@ -201,9 +201,7 @@ case $choice in
 
 		# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
 		step "Adding SSH key to keychain..."
-		ssh-add $HOME/.ssh/id_rsa
-		cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
-		cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
+		/usr/bin/ssh-add -K $HOME/.ssh/id_rsa
 		printf "\n"
 		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
 
@@ -1735,7 +1733,7 @@ case $choice in
 		fi
 
 		# Restoring gems
-		if test ! "$(gem -v)"
+		if test ! "$(gem -v)";
 		then
 			cecho "Unable to restore Ruby gems." $red
 		else
