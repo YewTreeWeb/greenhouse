@@ -315,11 +315,15 @@ case $choice in
 		read -p "What username would you like to add to the gitconfig file? Default is your user account." gitUser
 		read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier." gitEmail
 		read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '`" gitBranchName
+        hint:   git config pull.rebase false  # merge (the default strategy)
+hint:   git config pull.rebase true   # rebase
+hint:   git config pull.ff only       # fast-forward only
 
 		step "Adding Git config data..."
 		git config --global user.name "${gitUser:-$USER}"
 		git config --global user.email "${gitEmail:-$sshEmail}"
         git config --global init.defaultBranch ${gitBranchName:-'master'}
+        git config --global pull.rebase false
 
 		cecho "Git user data has been successfully added to .gitconfig" $green
 
