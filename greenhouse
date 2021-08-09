@@ -231,7 +231,7 @@ case $choice in
 
 				# Check if user local Applications folder exists.
 				if [[ ! -d "$HOME/Applications" ]]; then
-					mkdir "$HOME/Applications"
+					sudo mkdir "$HOME/Applications"
 				fi
 
 				cp $location/seeds/Brewfile $HOME
@@ -434,9 +434,13 @@ case $choice in
 		if [[ ! -d "$location/pottingshed/apps" ]]; then
 			sudo mkdir "$location/pottingshed/apps"
 		fi
+		if [[ ! -d "$location/storage" ]]; then
+			sudo mkdir "$location/storage"
+		fi
+
 		cd "$location/pottingshed/apps"
 
-		if [[ ! -f "/Applications/Popcorn-Time.app" ]];
+		if [[ ! -f "$HOME/Applications/Popcorn-Time.app" ]];
 		then
             read -p "Would you like to install Popcorn Time? Y/n" popcorn
             if [[ $popcorn =~ ^([yY])$ ]];
@@ -444,7 +448,7 @@ case $choice in
 			    step "Downloading PopcornTime..."
                 wget https://get.popcorntime.sh/build/Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
                 unzip Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
-                mv Popcorn-Time.app /Applications
+                sudo mv Popcorn-Time.app $HOME/Applications
                 cecho "Successfully downloaded and installed PopcornTime." $green
 			else
 				cecho "Popcorn Time installation aborted. Skipping..." $dim
@@ -453,7 +457,7 @@ case $choice in
 			cecho "PopcornTime already installed. Skipping..." $dim
 		fi
 
-		if [[ ! -f "/Applications/IconJar.app" ]];
+		if [[ ! -f "$HOME/Applications/IconJar.app" ]];
 		then
 			step "Downloading IconJar..."
 			cecho "GreenHouse will only install IconJar v1 as I don't like how it is now a subscription service." $dim
@@ -464,7 +468,7 @@ case $choice in
 				wget https://dl.devmate.com/com.iconjar.iconjar/Iconjar.zip 2> /dev/null
 				cp Iconjar.zip $location/storage # Move Iconjar.zip to storage encase creator removes option to download v1 in the future.
 				unzip Iconjar.zip 2> /dev/null
-				mv IconJar.app /Applications
+				sudo mv IconJar.app $HOME/Applications
 				cecho "Successfully downloaded and installed IconJar v1." $green
 			else
 				cecho "IconJar v1 installation aborted. Skipping..." $dim
