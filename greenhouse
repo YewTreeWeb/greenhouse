@@ -84,7 +84,7 @@ case $choice in
 		# Make sure you user/local exists.
 		if [[ ! -d "/usr/local" ]]; then
 			sudo mkdir "/usr/local"
-			# sudo chflags norestricted "/usr/local"
+			sudo chflags norestricted "/usr/local"
 		fi
 
 		# Check if system bin folder exists.
@@ -95,6 +95,16 @@ case $choice in
 		# Check if system sbin folder exists.
 		if [[ ! -d "$HOME/.sbin/" ]]; then
 			sudo mkdir "$HOME/.sbin"
+		fi
+
+		# Add website folder.
+		if [[ ! -d "$HOME/Sites/" ]]; then
+			sudo mkdir "$HOME/Sites"
+		fi
+
+		# Add developer folder.
+		if [[ ! -d "$HOME/Developer/" ]]; then
+			sudo mkdir "$HOME/Developer"
 		fi
 
 		# Check if xcode is installed. If not install it.
@@ -116,8 +126,6 @@ case $choice in
 			cecho "Homebrew successfully installed." $green
 		else
 			cecho "Homebrew already installed. Skipping..." $dim
-			brew cleanup -q 2> /dev/null
-			brew cleanup -s -q 2> /dev/null
 		fi
 
 		# Remove Old brew-cask if found.
@@ -132,18 +140,6 @@ case $choice in
 		printf "Updating Homebrew..."
 		brew update --force 2> /dev/null
 
-		# Installing shell enviornment.
-		step "Setting up the Shell environment..."
-        shell=$(echo "${0//-/}")
-
-        if [[ $shell != '/usr/local/bin/zsh' ]]; then
-            install_zsh
-            cecho "Shell environment changed to ZSH." $green
-            printf '\n'
-        else
-            cecho "Shell environment already set to ZSH. Skipping..." $dim
-        fi
-
 		##############################
 		# Add dotfiles #
 		##############################
@@ -154,10 +150,10 @@ case $choice in
 		then
 			cp $location/seeds/.gitattributes $HOME
 		fi
-		if [[ ! -f "$HOME/.gitconfig" ]];
-		then
-			cp $location/seeds/.gitconfig $HOME
-		fi
+		# if [[ ! -f "$HOME/.gitconfig" ]];
+		# then
+		# 	cp $location/seeds/.gitconfig $HOME
+		# fi
 		if [[ ! -f "$HOME/.gitignore" ]];
 		then
 			cp $location/seeds/.gitignore $HOME
@@ -187,31 +183,38 @@ case $choice in
 
 		heading "Creating system SSH key"
 
-		# Check if ssh folder exists.
-		if [[ ! -d "$HOME/.ssh/" ]]; then
-			mkdir $HOME/.ssh
-		fi
-		cd $HOME/.ssh
-
-		step "Creating key and adding to agent."
-		read -p 'Input email for ssh key: ' sshEmail
-		ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
-		eval "$(ssh-agent -s)"
-		cd $location
-
-		# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
-		step "Adding SSH key to keychain..."
-		/usr/bin/ssh-add -K $HOME/.ssh/id_rsa
-		printf "\n"
-		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
-
-		if [[ -e "$HOME/.ssh/config" ]]
+		if [[ ! -e "$HOME/.ssh/id_rsa" ]];
 		then
-			cecho "An SSH config file already exists. Skipping... " $dim
+			# Check if ssh folder exists.
+			if [[ ! -d "$HOME/.ssh/" ]]; then
+				sudo mkdir $HOME/.ssh
+			fi
+			cd $HOME/.ssh
+
+			step "Creating key and adding to agent."
+			read -p 'Input email for ssh key: ' sshEmail
+			ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
+			eval "$(ssh-agent -s)"
+			cd $location
+
+			# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
+			step "Adding SSH key to keychain..."
+			ssh-add $HOME/.ssh/id_rsa
+			cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
+			cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
+			printf "\n"
+			cecho "Successfully created SSH config file. Now creating SSH config file..." $green
+
+			if [[ -e "$HOME/.ssh/config" ]]
+			then
+				cecho "An SSH config file already exists. Skipping... " $dim
+			else
+				step "Creating a new SSH config file with default settings..."
+				create_ssh_config
+				cecho "Successfully created SSH config file." $green
+			fi
 		else
-			step "Creating a new SSH config file with default settings..."
-			create_ssh_config
-			cecho "Successfully created SSH config file." $green
+			cecho "SSH key already created. Skipping..." $dim
 		fi
 
 		#############################################
@@ -284,10 +287,6 @@ case $choice in
 				brew unlink heroku
 				brew link --overwrite heroku
 
-				step "Updating MongoDB Binary"
-				brew unlink mongodb
-				brew link --overwrite mongodb-community
-
 				step "Updating pngnq Binary"
 				brew unlink pngnq
 				brew link --overwrite pngnq-s9
@@ -337,21 +336,43 @@ case $choice in
 		fi
 
 		##############################
+		# Setup shell environment #
+		##############################
+		step "Setting up the Shell environment..."
+        shell=$(echo "${0//-/}")
+
+        if [[ $shell != '/usr/local/bin/zsh' ]]; then
+            install_zsh
+            cecho "Shell environment changed to ZSH." $green
+            printf '\n'
+        else
+            cecho "Shell environment already set to ZSH. Skipping..." $dim
+        fi
+
+		##############################
 		# Add git user config data #
 		##############################
 
 		heading "Adding user info to gitconfig..."
 
-		read -p "What username would you like to add to the gitconfig file? Default is your user account." gitUser
-		read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier." gitEmail
-		read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '`" gitBranchName
+		if [[ ! -f "$HOME/.gitconfig" ]];
+		then
+			touch $HOME/.gitconfig
+			read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
+			read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
+			read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
+			read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
 
-		step "Adding Git config data..."
-		git config --global user.name "${gitUser:-$USER}"
-		git config --global user.email "${gitEmail:-$sshEmail}"
-        git config --global init.defaultBranch ${gitBranchName:-'master'}
+			step "Adding Git config data..."
+			git config --global user.name "${gitUser:-$USER}"
+			git config --global user.email "${gitEmail:-$sshEmail}"
+			git config --global init.defaultBranch ${gitBranchName:-'master'}
+			git config --global ${gitPullRequest:-'pull.rebase false'}
 
-		cecho "Git user data has been successfully added to .gitconfig" $green
+			cecho "Git user data has been successfully added to .gitconfig" $green
+		else
+			cecho "A gitconfig already exists. Skipping..." $dim
+		fi
 
 		###############################################################################
 		# Install Mac Store Apps #
@@ -359,7 +380,7 @@ case $choice in
 
 		heading "Installing apps from the Mac Apps store"
 
-		if test "$(which mas)"
+				if test "$(which mas)"
 		then
 			echo "Opening App Store. Please login to continue."
 			open "/Applications/App Store.app"
@@ -370,12 +391,13 @@ case $choice in
 				step "Installing Apple Store apps..."
 				for app in $(<$location/seeds/apps); do
 					# Remove App names from list.
-					app=${app%%:*}
+					app=${app##:*}
+					appId=${app%%:*}
 
 					# Install app.
-					if test ! "$(mas list | grep $app)"; then
+					if test ! "$(mas list | grep $appId)"; then
 						installing "Installing $app"
-						mas install $app >/dev/null
+						mas install $appId >/dev/null
 						cecho "${bold}✓ $app installed${normal}" $green
 						printf "\n"
 					else
@@ -402,11 +424,12 @@ case $choice in
 		# Check if restore folder exists
         # Move into pottingshed/apps
 		if [[ ! -d "$location/pottingshed" ]]; then
-			take "$location/pottingshed"
+			sudo mkdir "$location/pottingshed"
 		fi
 		if [[ ! -d "$location/pottingshed/apps" ]]; then
-			take "$location/pottingshed/apps"
+			sudo mkdir "$location/pottingshed/apps"
 		fi
+		cd "$location/pottingshed/apps"
 
 		if [[ ! -f "/Applications/Popcorn-Time.app" ]];
 		then
@@ -511,13 +534,10 @@ case $choice in
 
 		step "Installing latest Node & LTS Node..."
 		nvm install node
-		nvm run node --version
-		nodeVersion=$(node -v)
 		nvm install --lts node
 		nvm use --lts
-		nodeLTSVersion=$(node -v)
 
-		cecho "Successfully installed NVM and Node. Node version: $nodeVersion and LTS version: $nodeLTSVersion\n" $green
+		cecho "Successfully installed NVM, latest Node and LTS version\n" $green
 		cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
 
 		step "Installing NPM packages..."
@@ -621,11 +641,13 @@ case $choice in
             # Check if Composer is already installed.
             # Check if subdirectoy folder exists
             if [[ ! -d "$location/pottingshed" ]]; then
-                take "$location/pottingshed"
+                sudo mkdir "$location/pottingshed"
             fi
             if [[ ! -d "$location/pottingshed/composer" ]]; then
-                take "$location/pottingshed/composer"
+                sudo mkdir "$location/pottingshed/composer"
             fi
+			# Go into composer folder.
+			cd "$location/pottingshed/composer"
 
 			step "Installing Composer..."
 
@@ -634,6 +656,11 @@ case $choice in
             php -r "if (hash_file('sha384', 'composer-setup.php') === '756890a4488ce9024fc62c56153228907f1545c228516cbf63f885e036d37e9a59d27d63f46af1d4d07ee0f76181c7d3') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
             php composer-setup.php
             php -r "unlink('composer-setup.php');"
+
+			# Check if /usr/local/bin/composer exists.
+			if [[ ! -d "/usr/local/bin/composer" ]]; then
+				sudo mkdir "/usr/local/bin/composer"
+			fi
 
 			# Move composer file to bin so it can be a global command.
 			sudo mv composer.phar /usr/local/bin/composer
@@ -679,15 +706,22 @@ case $choice in
                 # Check if Composer is already installed.
                 # Check if restore folder exists
                 if [[ ! -d "$location/pottingshed" ]]; then
-                    take "$location/pottingshed"
+                    sudo mkdir "$location/pottingshed"
                 fi
                 if [[ ! -d "$location/pottingshed/wpcli" ]]; then
-                    take "$location/pottingshed/wpcli"
+                    sudo mkdir "$location/pottingshed/wpcli"
                 fi
+				# Go into composer folder.
+				cd "$location/pottingshed/wpcli"
 
                 step "Installing WP-CLI..."
                 curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
                 chmod +x wp-cli.phar
+
+				# Check if bin/wp exists.
+				if [[ ! -d "usr/local/bin/wp" ]]; then
+					sudo mkdir "usr/local/bin/wp"
+				fi
 
                 # Move wp-cli.phar file to bin so we can just use the wp command.
                 sudo mv wp-cli.phar /usr/local/bin/wp
@@ -793,6 +827,35 @@ case $choice in
 			cecho "Successfully installed Hyper packages." $green
 		else
 			cecho "Unable to install Hyper packages. Please check your Homebrew cask installation." $red
+		fi
+
+		###############################################################################
+		# Install VSCode extensions #
+		###############################################################################
+
+		heading "Installing VSCode extensions"
+
+
+		if test "$(which code)"
+		then
+			vscode_commandline
+
+			step "Installing extensions..."
+			for vsCode in $(<$location/seeds/vscode_extensions); do
+				if test ! "$(code --list-extensions | grep $vsCode)"; then
+					installing "Installing $vsCode"
+					code --install-extension $vsCode >/dev/null
+					cecho "${bold}✓ $vsCode package installed${normal}" $green
+					printf "\n"
+				else
+					cecho "$vsCode has already been installed. Skipped..." $dim
+					printf "\n"
+				fi
+			done
+
+			cecho "Successfully installed VSCode extensions." $green
+		else
+			cecho "Unable to install VSCode extensions. Please check your Homebrew cask installation." $red
 		fi
 
 		#############################################
@@ -1582,7 +1645,7 @@ case $choice in
             printf "\n"
 		fi
 
-		# Take a copy of composer.json
+		# sudo mkdir a copy of composer.json
 		step "Backing up composer packages..."
 		if [[ ! "$(which composer)" ]]; then
 			cecho "Unable to backup Composer packages." $red
@@ -1803,7 +1866,7 @@ then
 	heading "Making Greenhouse global"
 	cp -r $location /usr/local/bin
 	chmod +x /usr/local/bin/greenhouse/greenhouse
-	printf "Thank you for using GreenHouse. You can now easily check on your plants from anywhere. Have a lovely sunny day and may the plants be ever in your favour.\n"
+	printf "Thank you once again for using GreenHouse. You can now easily check on your plants from anywhere. Have a lovely sunny day and may the plants be ever in your favour!\n"
 	printf '\n'
 	exit;
 fi

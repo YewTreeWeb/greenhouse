@@ -34,7 +34,7 @@ location="$(cd "$(dirname "$0")" && pwd)"
 
 # Shell environment variables
 zshDIR="$(command -v zsh)"
-zshRC="$HOME/.zshrc"
+shellProfile="$HOME/.zshrc"
 
 
 ### Text Formatting ###
@@ -145,7 +145,6 @@ touch $HOME/.ssh/config
 cat <<EOT >> $HOME/.ssh/config
 Host *
     AddKeysToAgent yes
-    UseKeychain yes
     ForwardAgent yes
     IdentitiesOnly yes
     IdentityFile ~/.ssh/id_rsa
@@ -167,7 +166,7 @@ EOT
 # If user wants to install NPM packages with Yarn, add global path to shell profile
 install_with_yarn() {
 
-cat <<EOT >> $zshRC
+cat <<EOT >> $shellProfile
 export PATH="$(yarn global bin):$PATH"
 EOT
 
@@ -197,7 +196,7 @@ fi
 zsh_completion() {
 
 brew install zsh-completions
-cat <<EOT >> $zshRC
+cat <<EOT >> $shellProfile
 # ZSH Completion
 if type brew &>/dev/null; then
     FPATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
@@ -206,15 +205,16 @@ EOT
 rm -f ~/.zcompdump; compinit
 chmod go-w "${BREW_PREFIX}/share"
 chmod go-w "/usr/local/share"
-
+source $shellProfile
 }
 
 # Add Starship to zshrc
 add_starship() {
-cat <<EOT >> $zshRC
+cat <<EOT >> $shellProfile
 # Starship
 eval "$(starship init zsh)"
 EOT
+source $shellProfile
 }
 
 install_zsh_dependecies() {
@@ -234,17 +234,15 @@ fi
 
 # Check if zsh_plugins exists.
 if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
-    mkdir "$HOME/.zsh_plugins"
-    cd "$HOME/.zsh_plugins"
-else
-    cd "$HOME/.zsh_plugins"
+    sudo mkdir "$HOME/.zsh_plugins"
 fi
+cd "$HOME/.zsh_plugins"
 
 if [ ! -d "$HOME/.zsh_plugins/fast-syntax-highlighting" ];
 then
     # Install syntax highlighting
     step "Installing syntax highlighting..."
-    git clone git@github.com:zdharma/fast-syntax-highlighting.git 2>/dev/null
+    git clone https://github.com/zdharma/fast-syntax-highlighting 2>/dev/null
     cecho "Syntax highlighting installed." $green
 else
     cecho "Syntax highlighting already installed. Skipping..." $dim
@@ -264,7 +262,7 @@ if [ ! -d "$HOME/.zsh_plugins/zsh-autosuggestions" ];
 then
     # Download 'zsh-autosuggestions' plugin
     step "Installing zsh-autosuggestions..."
-    git clone git@github.com:zsh-users/zsh-autosuggestions.git 2>/dev/null
+    git clone https://github.com/zsh-users/zsh-autosuggestions 2>/dev/null
     cecho "zsh-autosuggestions installed." $green
 else
     cecho "zsh-autosuggestions already installed. Skipping..." $dim
@@ -336,7 +334,7 @@ then
 	step "Backing up system .zshrc..."
 	if [[ ! -d "${location}/storage" ]];
 	then
-		mkdir ${location}/storage
+		sudo mkdir ${location}/storage
 	fi
 
 	if [[ -f $location/storage/.zshrc.bkp ]];
@@ -358,11 +356,13 @@ fi
 
 # Remove system generated .zshrc and use Greenhouse's zsh file
 # step "Replacing system .zshrc with Greenhouse's .zshrc"
-# if [ -f $HOME/.zshrc ];
-# then
-#     rm -rf $HOME/.zshrc
-# fi
-# cp $location/seeds/.zshrc $HOME
+if [[ -f $HOME/.zshrc ]];
+then
+	rm -rf $HOME/.zshrc
+fi
+cp $location/seeds/.zshrc $HOME
+source $shellProfile
+
 install_zsh_dependecies
 }
 
@@ -433,10 +433,20 @@ ssl_check() {
 
 # Add aliases for WP-CLI to .zshrc
 zsh_wpcli_aliases() {
-cat <<EOT >> $zshRC
+cat <<EOT >> $shellProfile
 # wp-cli quick update
 alias wp-update="wp core update && wp core language update"
 alias wp-asset-update="wp plugin update --all && wp theme update --all"
 alias wp-update-all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
 EOT
+source $shellProfile
+}
+
+# Add VSCode command line tool to .zshrc
+vscode_commandline() {
+cat <<EOF >> $shellProfile
+# Add Visual Studio Code (code)
+export PATH="\$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+EOF
+source $shellProfile
 }
