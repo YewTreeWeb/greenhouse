@@ -2,7 +2,5 @@ alecaddd/awps-cli
 dealerdirect/phpcodesniffer-composer-installer
 laravel/installer
 laravel/valet
-phpcompatibility/phpcompatibility-wp:*
 roave/security-advisories:dev-master
 squizlabs/php_codesniffer=*
-wp-coding-standards/wpcs

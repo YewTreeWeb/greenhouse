@@ -119,12 +119,6 @@ alias dl="cd ~/Downloads"
 alias dt="cd ~/Desktop"
 alias developer="cd ~/Developer"
 alias sites='cd ~/Sites'
-alias shopify='cd ~/Sites/shopify'
-alias wordpress='cd ~/Sites/wordpress'
-alias hyde='cd ~/Sites/jekyll'
-alias lara='cd ~/Sites/laravel'
-alias static='cd ~/Sites/static'
-alias designs='cd ~/Designs'
 alias sshFolder="cd ~/.ssh"
 alias g="git"
 
@@ -311,9 +305,6 @@ function sshUnifi() {
 ### Other ###
 # Eval Ruby env.
 eval "$(rbenv init -)"
-
-# ssh keys
-ssh-add -K ~/.ssh/github ~/.ssh/gitlab ~/.ssh/id_rsa && clear
 
 # Enable 'fast-syntax-highlighting' plugin in ZSH
 source $HOME/.zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh

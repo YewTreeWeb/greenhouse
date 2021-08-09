@@ -217,51 +217,6 @@ case $choice in
 			cecho "SSH key already created. Skipping..." $dim
 		fi
 
-		#############################################
-		# Add ssh-key to GitHub via api
-		# Reference new-computer github account
-		#############################################
-
-        read -p "Would you like to use Github for your remote git repo? Y/n " useGithub
-
-        if [[ $useGithub =~ ^([yY])$ ]];
-        then
-            heading "Adding ssh-key to GitHub (via api)..."
-
-            cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
-            cecho "If you don't have one, create it here: https://github.com/settings/tokens/new" $yellow
-            retries=3
-            SSH_KEY=`cat $HOME/.ssh/id_rsa.pub`
-
-            for ((i=0; i<retries; i++)); do
-                read -p 'GitHub username: ' ghusername
-                read -p 'Machine name: ' ghtitle
-                read -sp 'GitHub personal token: ' ghtoken
-
-                gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
-
-                if (( $gh_status_code -eq == 201))
-                then
-                    cecho "GitHub ssh key added successfully!" $green
-                    break
-                else
-                        cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
-                        echo -n "Status code returned: "
-                        echo $gh_status_code
-                fi
-            done
-
-            [[ $retries -eq i ]] && cecho "Adding ssh-key to GitHub failed! Try again later." $red
-            printf "\n"
-
-            # Add Github to ssh config file
-            add_github_host
-
-        else
-            cecho "Adding ssh-key to GitHub aborted. Skipping... " $dim
-        fi
-
-
 		##############################
 		# Install Brews #
 		##############################
@@ -303,12 +258,14 @@ case $choice in
                     brew tap shopify/shopify
                     brew install shopify-cli
                     cecho "Shopify CLI successfully installed" $green
+					shopfiy_dir_shortcut
                     printf "\n"
                 elif [[ $whichShopifyCli =~ ^([tT])$ ]];
                 then
                     brew tap shopify/shopify
                     brew install themekit
                     cecho "Theme Kit successfully installed" $green
+					shopfiy_dir_shortcut
                     printf "\n"
                 elif [[ $whichShopifyCli =~ ^([bB])$ ]];
                 then
@@ -316,6 +273,7 @@ case $choice in
                     brew install shopify-cli
                     brew install themekit
                     cecho "Shopify CLI and Theme Kit successfully installed" $green
+					shopfiy_dir_shortcut
                     printf "\n"
                 else
                     cecho "Shopify CLI and Theme Kit installation aborted. Skipping..." $dim
@@ -347,6 +305,53 @@ case $choice in
             printf '\n'
         else
             cecho "Shell environment already set to ZSH. Skipping..." $dim
+        fi
+
+		#############################################
+		# Add ssh-key to GitHub via api
+		# Reference new-computer github account
+		#############################################
+
+        read -p "Would you like to add your ssh key to Github? Y/n " useGithub
+
+        if [[ $useGithub =~ ^([yY])$ ]];
+        then
+            heading "Adding ssh-key to GitHub (via api)..."
+
+            cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
+            cecho "If you don't have one, create it here: https://github.com/settings/tokens/new" $yellow
+            retries=3
+            SSH_KEY=`cat $HOME/.ssh/id_rsa.pub`
+
+            for ((i=0; i<retries; i++)); do
+                read -p 'GitHub username: ' ghusername
+                read -p 'Machine name: ' ghtitle
+                read -sp 'GitHub personal token: ' ghtoken
+
+                gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
+
+                if (( $gh_status_code -eq == 201))
+                then
+                    cecho "GitHub ssh key added successfully!" $green
+                    break
+                else
+                        cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
+                        echo -n "Status code returned: "
+                        echo $gh_status_code
+                fi
+            done
+
+            [[ $retries -eq i ]] && cecho "Adding ssh-key to GitHub failed! Try again later." $red
+            printf "\n"
+
+            # Add Github to ssh config file
+            add_github_host
+
+			# Login to Github command line tool
+			gh auth login
+
+        else
+            cecho "Adding ssh-key to GitHub aborted. Skipping... " $dim
         fi
 
 		##############################
@@ -629,6 +634,13 @@ case $choice in
 
 				cecho "Successfully installed Ruby gems." $green
 			fi
+
+			# Create folder for Laravel
+			if [[ "$(which jekyll)" ]]; then
+				step "Adding custom Jekyll directory..."
+				jekyll_dir_shortcut
+				cecho "Successfully add a custom Jekyll directory to the Sites directory." $green
+			fi
 		fi
 
 		###############################################################################
@@ -659,7 +671,7 @@ case $choice in
 
 			# Check if /usr/local/bin/composer exists.
 			if [[ ! -d "/usr/local/bin/composer" ]]; then
-				sudo mkdir "/usr/local/bin/composer"
+				sudo mkdir /usr/local/bin/composer
 			fi
 
 			# Move composer file to bin so it can be a global command.
@@ -693,6 +705,26 @@ case $choice in
 			cecho "Unable to install Composer packages. Please try again." $red
 		fi
 
+		# Park Laravel Valet
+		if [[ "$(which valet)" ]]; then
+			step "Setting Laravel Valet's default directory..."
+			cd $HOME/Sites
+			valet park
+			# Create folder for static sites
+			step "Adding custom directory for static sites..."
+			static_dir_shortcut
+			cecho "Successfully set Laravel Valet's default directory to the Sites directory and created custom static directory." $green
+		fi
+
+		# Create folder for Laravel
+		if [[ "$(which laravel)" ]]; then
+			step "Adding custom Laravel directory..."
+			laravel_dir_shortcut
+			cecho "Successfully add a custom Laravel directory to the Sites directory." $green
+		fi
+
+		cd $location
+
 		###############################################################################
 		# Install WP-CLI and packages #
 		###############################################################################
@@ -720,7 +752,7 @@ case $choice in
 
 				# Check if bin/wp exists.
 				if [[ ! -d "usr/local/bin/wp" ]]; then
-					sudo mkdir "usr/local/bin/wp"
+					sudo mkdir usr/local/bin/wp
 				fi
 
                 # Move wp-cli.phar file to bin so we can just use the wp command.
@@ -732,11 +764,20 @@ case $choice in
                 # Clean out wpcli subdirectory to preserve space.
                 rm -rf $location/pottingshed/wpcli
 
+				# Add WP standards with Composer
+				if [[ "$(which composer)" ]]; then
+					composer global require phpcompatibility/phpcompatibility-wp:*
+					composer global require wp-coding-standards/wpcs
+				fi
+
                 # Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
                 fix_php_memory
 
                 # Add helpful aliases to .zshrc
                 zsh_wpcli_aliases
+
+				# Add custom directory for WordPress sites
+				wp_dir_shortcut
 
                 cecho "Successfully installed WP-CLI." $green
             else
@@ -766,6 +807,7 @@ case $choice in
             else
                 cecho "Unable to install packages. Please try again." $red
             fi
+
         else
             cecho "WP-CLI installation aborted. Skipping package installations..." $dim
         fi
@@ -835,7 +877,6 @@ case $choice in
 
 		heading "Installing VSCode extensions"
 
-
 		if test "$(which code)"
 		then
 			vscode_commandline
@@ -884,6 +925,7 @@ case $choice in
 			. "$location/seeds/macos"
 
 			cecho "All Mac settings configured and set. You may need to restart your terminal." $green
+			source $shellProfile
 			printf "\n"
 		else
 			printf "\n"

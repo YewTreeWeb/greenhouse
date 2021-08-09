@@ -1,13 +1,30 @@
 #!/bin/sh
-location="$(cd "$(dirname "$0")" && pwd)"
-cd $HOME
-pwd
-echo $$
-if test $(brew bundle); then
-	printf "Hello Brew"
-fi
-cd $location
-echo "hello ${location}"
-pwd
-echo $$
+# location="$(cd "$(dirname "$0")" && pwd)"
+# cd $HOME
+# pwd
+# echo $$
+# if test $(brew bundle); then
+# 	printf "Hello Brew"
+# fi
+# cd $location
+# echo "hello ${location}"
+# pwd
+# echo $$
 # cp -r $location $HOME/Sites
+# if grep -q 'robbyrussell' $HOME/.zshrc; then
+# 	echo "spaceship in .zshrc"
+# 	printf "\n"
+# 	sed -i -e "s/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"robbyrussell1\"/g" $HOME/.zshrc
+# 	code $HOME/.zshrc
+# else
+# 	echo "robbyrussell not found in .zshrc"
+# 	printf "\n"
+# fi
+
+shellProfile="$HOME/.zshrc"
+
+if grep -q 'hyde' $HOME/.zshrc; then
+echo 'Jekyll shortcut not found'
+else
+echo 'Jekyll shortcut found'
+fi
