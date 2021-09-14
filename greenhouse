@@ -653,6 +653,9 @@ case $choice in
 
 		heading "Installing Composer and packages"
 
+		# Make sure the Brew PHP service has started.
+		brew services start php
+
 		if [[ ! "$(which composer)" ]]; then
             # Check if Composer is already installed.
             # Check if subdirectoy folder exists
@@ -854,7 +857,7 @@ case $choice in
 		then
 			# add shell env to hyper.js
 			step "Configuring Hyper with selected shell env..."
-            sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g"
+			sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g" $HOME/.hyper.js
 			cecho "Successfully configured Hyper shell env." $green
 
 			step "Installing Hyper packages..."

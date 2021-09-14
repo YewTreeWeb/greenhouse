@@ -188,6 +188,8 @@ then
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
 fi
 
+brew services restart php
+
 }
 
 # Install and setup ZSH completions
@@ -197,7 +199,7 @@ brew install zsh-completions
 cat <<EOF >> $shellProfile
 # ZSH Completion
 if type brew &>/dev/null; then
-    FPATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
+    PATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
 fi
 EOF
 rm -f ~/.zcompdump; compinit
@@ -415,11 +417,11 @@ ssl_setup() {
 		# It appears mkcert bases its filenames off the number of domains passed after the first one.
 		# This script predicts that filename, so it can copy it to the .ssl directory.
 		if [[ $count = 0 ]]; then
-			mv $location/localhost.pem $ssl_crt
-			mv $location/localhost-key.pem $ssl_key
+			sudo mv $location/localhost.pem $ssl_crt
+			sudo mv $location/localhost-key.pem $ssl_key
 		else
-			mv $location/localhost+$count.pem $ssl_crt
-			mv $location/localhost+$count-key.pem $ssl_key
+			sudo mv $location/localhost+$count.pem $ssl_crt
+			sudo mv $location/localhost+$count-key.pem $ssl_key
 		fi
 	fi
 }
@@ -429,8 +431,8 @@ zsh_wpcli_aliases() {
 cat <<EOF >> $shellProfile
 # wp-cli quick update
 alias wp-update="wp core update && wp core language update"
-alias wp-asset-update="wp plugin update --all && wp theme update --all"
-alias wp-update-all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
+alias wp-update --assets="wp plugin update --all && wp theme update --all"
+alias wp-update --all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
 EOF
 source $shellProfile
 }
@@ -455,20 +457,20 @@ if [[ ! -d "$HOME/Developer/Shopify" ]]; then
 	sudo mkdir $HOME/Developer/Shopify
 fi
 
-if grep -q 'shopifyThemes' $shellProfile; then
+if grep -q 'st' $shellProfile; then
 	cecho "Shortcut for Shopify themes directory already exists. Skipping..." $dim
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Shopify themes directory
-alias shopifyThemes='cd ~/Sites/Shopify'
+alias st='cd ~/Sites/Shopify'
 EOF
 fi
-if grep -q 'shopifyAppss' $shellProfile; then
+if grep -q 'sa' $shellProfile; then
 	cecho "Shortcut for Shopify apps directory already exists. Skipping..." $dim
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Shopify apps directory
-alias shopifyApps='cd ~/Developer/Shopify'
+alias sa='cd ~/Developer/Shopify'
 EOF
 fi
 source $shellProfile
