@@ -87,6 +87,7 @@ brew "pkg-config"
 # brew "reattach-to-user-namespace"
 # brew "xmlstarlet"
 brew "yarn"
+brew "pnpm"
 # brew "watchman"
 
 ## Image tools

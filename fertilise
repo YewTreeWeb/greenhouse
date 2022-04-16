@@ -106,7 +106,7 @@ get_os_version() {
 
 # Check if the current session has access to the internet.
 check_internet_connection() {
-    if [[ ping -q -w1 -c1 google.com ]] &>/dev/null; then
+    if [ ping -q -w1 -c1 google.com ] &>/dev/null; then
         cecho "No internet found! Please check your internet connection." $red
         exit 0
     else

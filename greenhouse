@@ -251,7 +251,7 @@ case $choice in
 
                 # Install Shopify
                 cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
-                read -p "Would you like to install the Shopify CLI, Theme Kit or both? B/s/t/n" whichShopifyCli
+                read -p "Would you like to install both or just the Shopify CLI, Theme Kit or none? B/s/t/n" whichShopifyCli
 
                 if [[ $whichShopifyCli =~ ^([sS])$ ]];
                 then
@@ -549,12 +549,12 @@ case $choice in
 		cecho "Successfully installed NVM, latest Node and LTS version\n" $green
 		cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
 
-		step "Installing NPM packages..."
-		read -p "Would you like to use Yarn or NPM? yarn/npm" installPkg
+		step "Installing packages..."
+		read -p "Would you like to use yarn, pnpm or npm? y/p/n" installPkg
 
 		if [[ -e $location/seeds/npm ]];
 		then
-			if [[ $installPkg == 'yarn' ]];
+			if [[ $installPkg =~ ^([yY])$ ]];
 			then
 				if test "$(which yarn)"
 				then
@@ -562,6 +562,15 @@ case $choice in
 					xargs yarn global add < $location/seeds/npm
 				else
 					cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
+					xargs npm install -g < $location/seeds/npm
+				fi
+			elif [[ $installPkg =~ ^([pP])$ ]];
+			then
+				if test "$(which pnpm)"
+				then
+					xargs pnpm add -g < $location/seeds/npm
+				else
+					cecho "pnpm not installed. To use pnpm run ${bold}brew install pnpm${normal} or ${bold}curl -fsSL https://get.pnpm.io/install.sh | PNPM_VERSION=7.0.0-rc.5 sh -${normal}. Defaulting to NPM..." $yellow
 					xargs npm install -g < $location/seeds/npm
 				fi
 			else
@@ -940,14 +949,6 @@ case $choice in
 			printf "\n"
 		fi
 
-        ###############################################################################
-		# Adding Starship to ZSH #
-		###############################################################################
-
-		heading "Finshing up..."
-
-        add_starship
-
 		cecho "All seeds are sown. May the plants be ever in your favour!" $green
 		printf '\n'
 		;;
@@ -1267,10 +1268,10 @@ case $choice in
 				###############################################################################
 				# Updating NPM/Yarn packages #
 				###############################################################################
-				step "Updating NPM packages..."
-				read -p "Would you like to use Yarn or NPM to update your packages? yarn/npm" updatePkg
+				step "Updating Node packages..."
+				read -p "Would you like to use yarn, pnpm or npm to update your packages? y/p/n" updatePkg
 
-                step "Backing up NPM packages before update..."
+                step "Backing up packages before update..."
 				if [[ -f $location/storage/npm.bkp ]];
                 then
                     read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
@@ -1285,16 +1286,25 @@ case $choice in
                 else
                     npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
                 fi
-                cecho "NPM packages successfully updated." $green
+                cecho "Packages successfully updated." $green
                 printf "\n"
 
-				if [[ $updatePkg == 'yarn' ]];
+				if [[ $updatePkg =~ ^([yY])$ ]];
 				then
 					if test "$(which yarn)"
 					then
 						yarn global upgrade
 					else
 						cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
+						npm update -g
+					fi
+				elif [[ $updatePkg =~ ^([pP])$ ]];
+				then
+					if test "$(which pnpm)"
+					then
+						pnpm up --latest --global
+					else
+						cecho "pnpm not installed. To use pnpm run ${bold}brew install pnpm${normal} or ${bold}curl -fsSL https://get.pnpm.io/install.sh | PNPM_VERSION=7.0.0-rc.5 sh -${normal}. Defaulting to NPM..." $yellow
 						npm update -g
 					fi
 				else
@@ -1308,13 +1318,14 @@ case $choice in
 				# Switching Node versions with NVM #
 				###############################################################################
 				step "Changing Node versions..."
+				read -p "What version would you like to change to?" $nodeChange
 
 				if [[ "$(which nvm)" ]];
 				then
 					nodeVersion=$(node -v)
-					nvm install node --reinstall-packages-from=$nodeVersion --latest-npm
+					nvm install ${nodeChange:-node} --reinstall-packages-from=$nodeVersion --latest-npm
 					nvm use node
-					nvm alias default node
+					nvm alias default ${nodeChange:-node}
 					cecho "Node version successfully updated and changed to $(node -v)." $green
 				else
 					cecho "NVM NOT FOUND! Node version not updated or switched. Aborted!" $red
