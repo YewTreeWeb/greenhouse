@@ -389,7 +389,7 @@ case $choice in
 
 		heading "Installing apps from the Mac Apps store"
 
-				if test "$(which mas)"
+		if test "$(which mas)"
 		then
 			echo "Opening App Store. Please login to continue."
 			open "/Applications/App Store.app"
