@@ -36,7 +36,6 @@ location="$(cd "$(dirname "$0")" && pwd)"
 zshDIR="$(command -v zsh)"
 zshRC="$HOME/.zshrc"
 
-
 ### Text Formatting ###
 
 # Display outputted text in a chosen colour.
@@ -92,15 +91,12 @@ get_os() {
 
 # Get the current version of the system's OS.
 get_os_version() {
-
     local os=""
     local version=""
     os="$(get_os)"
-
     if [ "$os" == "macOS" ]; then
         version="$(sw_vers -productVersion)"
     fi
-
     echo $version
 }
 
@@ -118,9 +114,7 @@ check_internet_connection() {
 # Cache the sudo password.
 admin_pass() {
     # Ask for the administrator password upfront.
-
     sudo -v &>/dev/null
-
     # Update existing `sudo` time stamp
     # until this script has finished.
     #
@@ -155,7 +149,6 @@ EOT
 # Add Github host to ssh config
 add_github_host () {
 cat <<EOT >> $HOME/.ssh/config
-
 Host github
     HostName github.com
     User $ghusername
@@ -166,16 +159,13 @@ EOT
 
 # If user wants to install NPM packages with Yarn, add global path to shell profile
 install_with_yarn() {
-
 cat <<EOT >> $zshRC
 export PATH="$(yarn global bin):$PATH"
 EOT
-
 }
 
 # Find PHP memory files and change the limit to a higher amount
 fix_php_memory() {
-
 local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
 local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
 
@@ -190,12 +180,10 @@ then
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
 fi
-
 }
 
 # Install and setup ZSH completions
 zsh_completion() {
-
 brew install zsh-completions
 cat <<EOT >> $zshRC
 # ZSH Completion
@@ -206,7 +194,6 @@ EOT
 rm -f ~/.zcompdump; compinit
 chmod go-w "${BREW_PREFIX}/share"
 chmod go-w "/usr/local/share"
-
 }
 
 # Add Starship to zshrc
@@ -218,118 +205,96 @@ EOT
 }
 
 install_zsh_dependecies() {
+    # Clone ZSH dependency repos to `~/.zsh/` directory
+    cd $HOME
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+        # Download Oh My ZSH
+        step "Installing Oh My ZSH..."
+        sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+        if [ $? -eq 0 ]; then
+            cecho "Oh My ZSH installed." $green
+        fi
+    else
+        cecho "Oh My ZSH already installed. Skipping..." $dim
+    fi
 
-# Clone ZSH dependency repos to `~/.zsh/` directory
-cd $HOME
+    # Check if zsh_plugins exists.
+    if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
+        mkdir "$HOME/.zsh_plugins"
+        cd "$HOME/.zsh_plugins"
+    else
+        cd "$HOME/.zsh_plugins"
+    fi
 
-if [ ! -d "$HOME/.oh-my-zsh" ];
-then
-    # Download Oh My ZSH
-    step "Installing Oh My ZSH..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-    cecho "Oh My ZSH installed." $green
-else
-    cecho "Oh My ZSH already installed. Skipping..." $dim
-fi
+    # Check if zsh-syntax-highlighting is installed through Homebrew
+    if brew list zsh-syntax-highlighting &> /dev/null; then
+        # Add zsh-syntax-highlighting to .zshrc if not already present
+        if ! grep -q "zsh-syntax-highlighting.zsh" ~/.zshrc; then
+            step "Enabling plugin..."
+            echo "source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" >> ~/.zshrc
+            cecho "zsh-syntax-highlighting enabled." $green
+        else
+            cecho "zsh-syntax-highlighting is already enabled. Skipping..." $dim
+        fi
+    fi
 
-# Check if zsh_plugins exists.
-if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
-    mkdir "$HOME/.zsh_plugins"
-    cd "$HOME/.zsh_plugins"
-else
-    cd "$HOME/.zsh_plugins"
-fi
+    if [ ! -f "$HOME/.zsh_plugins/completion.zsh" ]; then
+        # Install completion plugin
+        step "Installing completion plugin..."
+        wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
+        cecho "Completion plugin installed." $green
+    else
+        cecho "Completion plugin already installed. Skipping..." $dim
+    fi
 
-if [ ! -d "$HOME/.zsh_plugins/fast-syntax-highlighting" ];
-then
-    # Install syntax highlighting
-    step "Installing syntax highlighting..."
-    git clone git@github.com:zdharma/fast-syntax-highlighting.git 2>/dev/null
-    cecho "Syntax highlighting installed." $green
-else
-    cecho "Syntax highlighting already installed. Skipping..." $dim
-fi
+    # Check if zsh-autosuggestions is installed through Homebrew
+    if brew list zsh-autosuggestions &> /dev/null; then
+        # Add zsh-autosuggestions to .zshrc if not already present
+        if ! grep -q "zsh-autosuggestions.zsh" ~/.zshrc; then
+            step "Enabling plugin..."
+            echo "source /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh" >> ~/.zshrc
+            cecho "zsh-autosuggestions enabled." $green
+        else
+            cecho "zsh-autosuggestions is already enabled. Skipping..." $dim
+        fi
+    fi
 
-if [ ! -f "$HOME/.zsh_plugins/completion.zsh" ];
-then
-    # Install completion plugin
-    step "Installing completion plugin..."
-    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
-    cecho "Completion plugin installed." $green
-else
-    cecho "Completion plugin already installed. Skipping..." $dim
-fi
+    # Check if zsh-autocomplete is installed through Homebrew
+    if brew list zsh-autocomplete &> /dev/null; then
+        # Add zsh-autocomplete to .zshrc if not already present
+        if ! grep -q "zsh-autocomplete.zsh" ~/.zshrc; then
+            step "Enabling plugin..."
+            echo "source /usr/local/share/zsh-autocomplete/zsh-autocomplete.zsh" >> ~/.zshrc
+            cecho "zsh-autocomplete enabled." $green
+        else
+            cecho "zsh-autocomplete is already enabled. Skipping..." $dim
+        fi
+    fi
 
-if [ ! -d "$HOME/.zsh_plugins/zsh-autosuggestions" ];
-then
-    # Download 'zsh-autosuggestions' plugin
-    step "Installing zsh-autosuggestions..."
-    git clone git@github.com:zsh-users/zsh-autosuggestions.git 2>/dev/null
-    cecho "zsh-autosuggestions installed." $green
-else
-    cecho "zsh-autosuggestions already installed. Skipping..." $dim
-fi
+    if [ ! -f "$HOME/.zsh_plugins/history.zsh" ]; then
+        # Download history config
+        step "Installing history config..."
+        wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/history.zsh 2>/dev/null
+        cecho "History config installed." $green
+    else
+        cecho "History config already installed. Skipping..." $dim
+    fi
 
-if [ ! -f "$HOME/.zsh_plugins/history.zsh" ];
-then
-    # Download history config
-    step "Installing history config..."
-    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/history.zsh 2>/dev/null
-    cecho "History config installed." $green
-else
-    cecho "History config already installed. Skipping..." $dim
-fi
+    if [ ! -f "$HOME/.zsh_plugins/key-bindings.zsh" ]; then
+        # Download key bindings config
+        step "Installing key bindings config..."
+        wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/key-bindings.zsh 2>/dev/null
+        cecho "Key bindings config installed." $green
+    else
+        cecho "Key bindings config already installed. Skipping..." $dim
+    fi
 
-if [ ! -f "$HOME/.zsh_plugins/key-bindings.zsh" ];
-then
-    # Download key bindings config
-    step "Installing key bindings config..."
-    wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/key-bindings.zsh 2>/dev/null
-    cecho "Key bindings config installed." $green
-else
-    cecho "Key bindings config already installed. Skipping..." $dim
-fi
-
-# Go back to $location
-cd $location
-
+    # Go back to $location
+    cd $location
 }
 
 # Install/Set shell env to ZSH
 install_zsh() {
-
-if test "$(which brew)"
-then
-    if [ "$zshDIR" != '/usr/local/bin/zsh' ];
-    then
-        brew install zsh
-
-        # Switch to using brew-installed zsh as default shell
-        if ! fgrep -q "${BREW_PREFIX}/bin/zsh" /etc/shells; then
-            echo "${BREW_PREFIX}/bin/zsh" | sudo tee -a /etc/shells;
-            chsh -s "${BREW_PREFIX}/bin/zsh";
-        fi;
-    else
-		printf "Updating ZSH..."
-		brew upgrade zsh 2> /dev/null
-		# while [[ -z "$(! brew upgrade zsh 2> /dev/null)" ]];
-		# 	do printf "...";
-		# 	sleep 1
-		# done
-        cecho "ZSH successfully updated to latest version." $green
-    fi
-
-    # Change shell to modern zsh.
-    sudo chsh -s "$zshDIR" "$USER"
-
-    cecho "Shell set to ZSH." $green
-else
-    # Use default location for shell env - /bin/zsh
-    sudo chsh -s "$zshDIR" "$USER"
-
-    cecho "Shell set to system default ZSH." $green
-fi
-
 # Backup system .zshrc
 if [[ -f $HOME/.zshrc ]];
 then

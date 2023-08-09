@@ -33,7 +33,7 @@ The script will ${green}install${reset}, ${blue}update${reset}, ${purple}backup$
 ${bold}System Info:${normal}
 // OS: ${dim}$(get_os) ${normal} // OS Version: ${dim}$(get_os_version) ${normal} // Shell: ${dim}$BASH ${normal} // Shell Version: ${dim}$BASH_VERSION${reset}
 
-${dim}Copyright © 2020 | Mathew Teague.${normal}
+${dim}Copyright © 2023 | Mathew Teague.${normal}
 ----
 \n
 "
@@ -84,7 +84,13 @@ case $choice in
 		# Make sure you user/local exists.
 		if [[ ! -d "/usr/local" ]]; then
 			sudo mkdir "/usr/local"
-			# sudo chflags norestricted "/usr/local"
+			sudo chflags norestricted "/usr/local"
+		fi
+
+		# Make sure you user/local/bin exists.
+		if [[ ! -d "/usr/local/bin" ]]; then
+			sudo mkdir "/usr/local/bin"
+			sudo chflags norestricted "/usr/local/bin"
 		fi
 
 		# Check if system bin folder exists.
@@ -98,51 +104,92 @@ case $choice in
 		fi
 
 		# Check if xcode is installed. If not install it.
-		if type xcode-select >&- && xpath=$( xcode-select --print-path ) &&
-			test -d "${xpath}" && test -x "${xpath}" ; then
+		if xcode-select -p &> /dev/null; then
 			cecho "Xcode already installed. Skipping..." $dim
 		else
 			step "Installing Xcode..."
-			xcode-select --install
-			cecho "Xcode successfully installed." $green
+            # Install Xcode Command Line Tools
+            xcode-select --install
+			# Wait for the installation to finish (this can take some time)
+            while ! xcode-select -p &> /dev/null; do
+                sleep 5
+            done
+            if [ $? -eq 0 ]; then
+			    cecho "Xcode successfully installed." $green
+            fi
 		fi
 
 		# Check for Brew installation.
-		if test ! "$(which brew)"
-		then
-			step "Installing Homebrew..."
-			## Don't prompt for confirmation when installing homebrew
-			/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" < /dev/null
-			cecho "Homebrew successfully installed." $green
+		if command -v brew &> /dev/null; then
+            cecho "Homebrew already installed. Skipping..." $dim
 		else
-			cecho "Homebrew already installed. Skipping..." $dim
+			step "Installing Homebrew..."
+            # Install Homebrew
+			/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Wait for the installation to finish
+            while ! command -v brew &> /dev/null; do
+                sleep 5
+            done
+            if [ $? -eq 0 ]; then
+			    cecho "Homebrew successfully installed." $green
+            fi
 		fi
-
-		# Remove Old brew-cask if found.
-		# if brew list | grep -Fq brew-cask; then
-		# 	step "Uninstalling old Homebrew Cask..."
-		# 	brew uninstall --force brew-cask
-		# 	cecho "Homebrew-Cask uninstalled!" $green
-		# fi
 
 		# Make sure system is running the latest Homebrew
 		printf "Updating Homebrew..."
 		brew update 2> /dev/null
-		# while [[ -z "$(! brew update 2> /dev/null)" ]];
-		# 	do printf "...";
-		# 	sleep 1
-		# done
 
 		# Installing shell enviornment.
 		step "Setting up the Shell environment..."
-        shell=$(echo "${0//-/}")
 
-        if [[ $shell != '/usr/local/bin/zsh' ]]; then
-            install_zsh
-            cecho "Shell environment changed to ZSH." $green
+        # Check if Zsh is installed through Homebrew
+        if brew list zsh &> /dev/null; then
+            cecho "Homebrew ZSH already installed. Updating..." $dim
+            brew upgrade zsh
+            if [ $? -eq 0 ]; then
+                cecho "Updated ZSH successfully." $green
+            fi
             printf '\n'
         else
-            cecho "Shell environment already set to ZSH. Skipping..." $dim
+            brew install zsh
+            # Switch to using brew-installed zsh as default shell
+            if ! fgrep -q "${BREW_PREFIX}/bin/zsh" /etc/shells; then
+                echo "${BREW_PREFIX}/bin/zsh" | sudo tee -a /etc/shells;
+                chsh -s "${BREW_PREFIX}/bin/zsh";
+            fi;
+            if [ $? -eq 0 ]; then
+                cecho "Shell environment changed to ZSH." $green
+            else
+                cecho "Failed to install ZSH via Homebrew." $red
+            fi
+            printf '\n'
+        fi
+
+        # Check if ZSH is installed
+        if command -v zsh &> /dev/null; then
+            # Remove system generated .zshrc and use Greenhouse's zsh file
+            # step "Replacing system .zshrc with Greenhouse's .zshrc"
+            if [ -f $HOME/.zshrc ]; then
+                rm -rf $HOME/.zshrc
+            fi
+        fi
+
+        ##############################
+		# Use Fig #
+		##############################
+        heading "Use Fig"
+
+        read -p "Would you like to have your system managed by Fig? y/n/both `cecho $'\nhint: Choose both if you want manual control as well as Fig control' $dim``print $'\n\n> '`" useFig
+        if [[ $useFig =~ ^([bothBothBOTH])$ || $useFig =~ ^([yY])$ ]]; then
+            brew install fig --cask
+            install_zsh_dependecies
+        fi
+        if [[ $useFig =~ ^([bothBothBOTH])$ ]]; then
+            cp $location/seeds/profile/.zshrc-w-fig $HOME/.zshrc
+        elif [[ $useFig =~ ^([yY])$ ]]; then
+            cp $location/seeds/profile/.figZshrc $HOME/.zshrc
+        else
+            cp $location/seeds/profile/.zshrc $HOME/.zshrc
         fi
 
 		##############################
@@ -150,33 +197,25 @@ case $choice in
 		##############################
 
 		heading "Adding system dotfiles"
-
-		if [[ ! -f "$HOME/.gitattributes" ]];
-		then
+		if [[ ! -f "$HOME/.gitattributes" ]]; then
 			cp $location/seeds/.gitattributes $HOME
 		fi
-		if [[ ! -f "$HOME/.gitconfig" ]];
-		then
+		if [[ ! -f "$HOME/.gitconfig" ]]; then
 			cp $location/seeds/.gitconfig $HOME
 		fi
-		if [[ ! -f "$HOME/.gitignore" ]];
-		then
+		if [[ ! -f "$HOME/.gitignore" ]]; then
 			cp $location/seeds/.gitignore $HOME
 		fi
-		if [[ ! -f "$HOME/.editorconfig" ]];
-		then
+		if [[ ! -f "$HOME/.editorconfig" ]]; then
 			cp $location/seeds/.editorconfig $HOME
 		fi
-		if [[ ! -f "$HOME/.curlrc" ]];
-		then
+		if [[ ! -f "$HOME/.curlrc" ]]; then
 			cp $location/seeds/.curlrc $HOME
 		fi
-		if [[ ! -f "$HOME/.nvmrc" ]];
-		then
+		if [[ ! -f "$HOME/.nvmrc" ]]; then
 			cp $location/seeds/.nvmrc $HOME
 		fi
-		if [[ ! -f "$HOME/.hyper.js" ]];
-		then
+		if [[ ! -f "$HOME/.hyper.js" ]]; then
 			cp $location/seeds/.hyper.js $HOME
 		fi
 		cecho "All dotfiles have been added." $green
@@ -190,7 +229,8 @@ case $choice in
 
 		# Check if ssh folder exists.
 		if [[ ! -d "$HOME/.ssh/" ]]; then
-			take $HOME/.ssh
+			mkdir $HOME/.ssh
+			cd $HOME/.ssh
 		fi
 
 		step "Creating key and adding to agent."
@@ -201,7 +241,9 @@ case $choice in
 
 		# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
 		step "Adding SSH key to keychain..."
-		ssh-add $HOME/.ssh/id_rsa
+		ssh-add --apple-use-keychain $HOME/.ssh/id_rsa
+        echo "# ssh keys" >> $HOME/.zshrc
+        echo "ssh-add --apple-use-keychain $HOME/.ssh/id_rsa" >> $HOME/.zshrc
 		cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
 		cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
 		printf "\n"
@@ -213,7 +255,11 @@ case $choice in
 		else
 			step "Creating a new SSH config file with default settings..."
 			create_ssh_config
-			cecho "Successfully created SSH config file." $green
+            if [ $? -eq 0 ]; then
+			    cecho "Successfully created SSH config file." $green
+            else
+                cecho "Unable to create SSH config file." $red
+            fi
 		fi
 
 		#############################################
@@ -223,8 +269,7 @@ case $choice in
 
         read -p "Would you like to use Github for your remote git repo? Y/n " useGithub
 
-        if [[ $useGithub =~ ^([yY])$ ]];
-        then
+        if [[ $useGithub =~ ^([yY])$ ]]; then
             heading "Adding ssh-key to GitHub (via api)..."
 
             cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
@@ -239,14 +284,13 @@ case $choice in
 
                 gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
 
-                if (( $gh_status_code -eq == 201))
-                then
+                if (( $gh_status_code -eq == 201)) then
                     cecho "GitHub ssh key added successfully!" $green
                     break
                 else
-                        cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
-                        echo -n "Status code returned: "
-                        echo $gh_status_code
+                    cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
+                    echo -n "Status code returned: "
+                    echo $gh_status_code
                 fi
             done
 
@@ -255,11 +299,9 @@ case $choice in
 
             # Add Github to ssh config file
             add_github_host
-
         else
             cecho "Adding ssh-key to GitHub aborted. Skipping... " $dim
         fi
-
 
 		##############################
 		# Install Brews #
@@ -267,58 +309,84 @@ case $choice in
 
 		heading "Installing Homebrew formulaes and casks"
 
-		if [[ -e $location/seeds/Brewfile ]];
-		then
-			if test "$(which brew)"
-			then
-				step "Installing Brewfile..."
-
+		if [[ -e $location/seeds/Brewfile ]]; then
+            if command -v brew &> /dev/null; then
+				step "Installing Homebrew packages..."
 				# Check if user local Applications folder exists.
 				if [[ ! -d "$HOME/Applications" ]]; then
-					mkdir "$HOME/Applications"
+                    read -p "Would you like to install casks to a local Applications directory? Y/n " haveLocalApps
+                    if [[ $haveLocalApps =~ ^([yY])$ ]];
+					    mkdir "$HOME/Applications"
+                        echo "# Homebrew install cask location" >> $HOME/.zshrc
+                        echo "export HOMEBREW_CASK_OPTS=\"--appdir=~/Applications\"" >> $HOME/.zshrc
+                    fi
 				fi
 
 				cp $location/seeds/Brewfile $HOME
 				cd $HOME
 				brew bundle
 
-				step "Updating Heroku Binary"
-				brew unlink heroku
-				brew link --overwrite heroku
-
 				step "Updating MongoDB Binary"
 				brew unlink mongodb
 				brew link --overwrite mongodb-community
 
-				step "Updating pngnq Binary"
-				brew unlink pngnq
-				brew link --overwrite pngnq-s9
+                # Install IconJar
+                read -p "Would you like to install IconJar? y/N" installIJ
+                if [[ $installIJ == ]]; then
+                     # Install iconjar and wait for installation
+                    if ! brew list --cask iconjar &> /dev/null; then
+                        cecho "Installing iconjar via Homebrew..."
+                        brew install --cask iconjar
 
-				# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
-				ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
+                        # Wait for the installation to finish
+                        while ps | grep -q "[b]rew install --cask iconjar"; do
+                            sleep 5
+                        done
+
+                        if brew list --cask iconjar &> /dev/null; then
+                            cecho "iconjar installed successfully via Homebrew." $green
+                        else
+                            cecho "Failed to install iconjar via Homebrew." $red
+                        fi
+                    else
+                        cecho "iconjar is already installed via Homebrew. Skipping..." $dim
+                    fi
+                else
+                    cecho "IconJar installation aborted. Skipping..." $dim
+                fi
 
                 # Install Shopify
                 cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
-                read -p "Would you like to install the Shopify CLI, Theme Kit or both? B/s/t/n" whichShopifyCli
+                printf "\n"
+                read -p "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit/n" whichShopifyCli
 
-                if [[ $whichShopifyCli =~ ^([sS])$ ]];
+                if [[ $whichShopifyCli =~ ^([cli])$ ]];
                 then
-                    brew tap shopify/shopify
                     brew install shopify-cli
-                    cecho "Shopify CLI successfully installed" $green
+                    if [ $? -eq 0 ]; then
+                        cecho "Shopify CLI successfully installed" $green
+                    else
+                        cecho "Failed to install Shopify CLI via Homebrew" $red
+                    fi
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([tT])$ ]];
+                elif [[ $whichShopifyCli =~ ^([themekit])$ ]];
                 then
-                    brew tap shopify/shopify
                     brew install themekit
-                    cecho "Theme Kit successfully installed" $green
+                    if [ $? -eq 0 ]; then
+                        cecho "Theme Kit successfully installed" $green
+                    else
+                        cecho "Failed to install Theme Kit via Homebrew" $red
+                    fi
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([bB])$ ]];
+                elif [[ $whichShopifyCli =~ ^([both])$ ]];
                 then
-                    brew tap shopify/shopify
                     brew install shopify-cli
                     brew install themekit
-                    cecho "Shopify CLI and Theme Kit successfully installed" $green
+                    if [ $? -eq 0 ]; then
+                        cecho "Shopify CLI and Theme Kit successfully installed" $green
+                    else
+                        cecho "Failed to install both Shopify CLI and Theme Kit via Homebrew" $red
+                    fi
                     printf "\n"
                 else
                     cecho "Shopify CLI and Theme Kit installation aborted. Skipping..." $dim
@@ -329,7 +397,7 @@ case $choice in
 
 				# Run a Homebrew cleanup.
 				step "Cleaning up Homebrew..."
-				brew cleanup 2> /dev/null
+				brew cleanup
 				brew cleanup -s 2> /dev/null
 
 				cd $location
@@ -356,45 +424,6 @@ case $choice in
 		cecho "Git user data has been successfully added to .gitconfig" $green
 
 		###############################################################################
-		# Install Mac Store Apps #
-		###############################################################################
-
-		heading "Installing apps from the Mac Apps store"
-
-		if test "$(which mas)"
-		then
-			echo "Opening App Store. Please login to continue."
-			open "/Applications/App Store.app"
-			read -p "Has login completed successfully (y/n)? " loginConfirm
-
-			if [[ $loginConfirm != "${loginConfirm#[Yy]}" ]] && [[ -f $location/seeds/apps ]];
-			then
-				step "Installing Apple Store apps..."
-				for app in $(<$location/seeds/apps); do
-					# Remove App names from list.
-					app=${app%%:*}
-
-					# Install app.
-					if test ! "$(mas list | grep $app)"; then
-						installing "Installing $app"
-						mas install $app >/dev/null
-						cecho "${bold}✓ $app installed${normal}" $green
-						printf "\n"
-					else
-						cecho "$app has already been installed. Skipped..." $dim
-						printf "\n"
-					fi
-				done
-
-				cecho "Successfully installed App Store apps." $green
-			else
-				cecho "App Store login aborted. Skipping..." $dim
-			fi
-		else
-			cecho "There appears to be a problem with mas. Please re-install and try again." $red
-		fi
-
-		###############################################################################
 		# Install Mac None Store Apps #
 		###############################################################################
 
@@ -404,10 +433,12 @@ case $choice in
 		# Check if restore folder exists
         # Move into pottingshed/apps
 		if [[ ! -d "$location/pottingshed" ]]; then
-			take "$location/pottingshed"
+			mkdir "$location/pottingshed"
+			cd "$location/pottingshed"
 		fi
 		if [[ ! -d "$location/pottingshed/apps" ]]; then
-			take "$location/pottingshed/apps"
+			mkdir "$location/pottingshed/apps"
+			cd "$location/pottingshed/apps"
 		fi
 
 		if [[ ! -f "/Applications/Popcorn-Time.app" ]];
@@ -425,26 +456,6 @@ case $choice in
 			fi
 		else
 			cecho "PopcornTime already installed. Skipping..." $dim
-		fi
-
-		if [[ ! -f "/Applications/IconJar.app" ]];
-		then
-			step "Downloading IconJar..."
-			cecho "GreenHouse will only install IconJar v1 as I don't like how it is now a subscription service." $dim
-			cecho "For IconJar v2 run ${bold}brew install iconjar${normal}" $dim
-			read -p "Continue with v1 install? Y/n" iconjar1
-			if [[ $iconjar1 =~ ^([yY])$ ]];
-			then
-				wget https://dl.devmate.com/com.iconjar.iconjar/Iconjar.zip 2> /dev/null
-				cp Iconjar.zip $location/storage # Move Iconjar.zip to storage encase creator removes option to download v1 in the future.
-				unzip Iconjar.zip 2> /dev/null
-				mv IconJar.app /Applications
-				cecho "Successfully downloaded and installed IconJar v1." $green
-			else
-				cecho "IconJar v1 installation aborted. Skipping..." $dim
-			fi
-		else
-			cecho "IconJar already installed. Skipping..." $dim
 		fi
 
 		if [[ ! -f "/Applications/Amphetamine Enhancer.app" ]];
@@ -495,8 +506,7 @@ case $choice in
 
 		# Install NVM to manage Node.
 		step "Installing NVM..."
-		if [[ ! "$(which nvm)" ]];
-		then
+		if command -v nvm &> /dev/null; then
 			if [[ ! $(grep "nvm" $location/seeds/brews) ]];
 			then
 				curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.2/install.sh | bash
@@ -505,11 +515,11 @@ case $choice in
 
 		if [[ ! -f "$HOME/.nvmrc" ]];
 		then
-			touch $HOME/.nvmrc
-			echo "lts/*" > $HOME/.nvmrc
+			cp $location/seeds/.nvmrc $HOME
 		fi
 
 		cecho "NVM has been installed and configured." $green
+        printf "\n\n"
 
 		step "Installing latest Node & LTS Node..."
 		nvm install node

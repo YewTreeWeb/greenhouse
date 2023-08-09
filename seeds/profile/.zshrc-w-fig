@@ -1,3 +1,6 @@
+# Fig pre block. Keep at the top of this file.
+[[ -f "$HOME/.fig/shell/zshrc.pre.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.pre.zsh"
+
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 
@@ -8,7 +11,7 @@ export ZSH="/Users/mat/.oh-my-zsh"
 # load a random theme each time oh-my-zsh is loaded, in which case,
 # to know which specific one was loaded, run: echo $RANDOM_THEME
 # See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
-ZSH_THEME="robbyrussell"
+ZSH_THEME="spaceship"
 
 # Set list of themes to pick from when loading at random
 # Setting this variable when ZSH_THEME=random will cause zsh to load
@@ -109,7 +112,7 @@ alias -- -="cd -"
 alias greenhouse="/usr/local/bin/greenhouse/greenhouse"
 
 # Source zprofile
-alias refresh='source ~/.zshrc'
+alias refresh='source ~/.zshrc && fig source; fig scripts refresh && clear'
 
 # zprofile
 alias profile='code ~/.zshrc'
@@ -119,13 +122,13 @@ alias dl="cd ~/Downloads"
 alias dt="cd ~/Desktop"
 alias developer="cd ~/Developer"
 alias sites='cd ~/Sites'
-alias shopify='cd ~/Sites/shopify'
+alias shop='cd ~/Sites/shopify'
 alias wordpress='cd ~/Sites/wordpress'
 alias hyde='cd ~/Sites/jekyll'
 alias lara='cd ~/Sites/laravel'
 alias static='cd ~/Sites/static'
 alias designs='cd ~/Designs'
-alias sshFolder="cd ~/.ssh"
+alias sf="cd ~/.ssh"
 alias g="git"
 
 # create new key
@@ -139,11 +142,6 @@ alias mysql="mysql -uroot"
 
 # Flush Directory Service cache
 alias flush="sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder"
-
-# Empty the Trash on all mounted volumes and the main HDD.
-# Also, clear Apple’s System Logs to improve shell startup speed.
-# Finally, clear download history from quarantine. https://mths.be/bum
-alias emptytrash="sudo rm -rfv /Volumes/*/.Trashes; sudo rm -rfv ~/.Trash; sudo rm -rfv /private/var/log/asl/*.asl; sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV* 'delete from LSQuarantineEvent'"
 
 # Show/hide hidden files in Finder
 alias show="defaults write com.apple.finder AppleShowAllFiles -bool true && killall Finder"
@@ -159,15 +157,10 @@ alias status="git status"
 # rbenv
 alias rbenvDoc="curl -fsSL https://github.com/rbenv/rbenv-installer/raw/master/bin/rbenv-doctor | bash"
 
-# Remove alias
-unalias gcp
-
 # Run Netlify CMS locally
 alias netlifycms="npx netlify-cms-proxy-server"
 
 ### Exports ###
-export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
-
 # Brew
 export PATH="/usr/local/sbin:$PATH"
 
@@ -175,7 +168,6 @@ export PATH="/usr/local/sbin:$PATH"
 # Learn more about what you are opting in to at
 # https://docs.brew.sh/Analytics
 export HOMEBREW_NO_ANALYTICS=1
-export HOMEBREW_CASK_OPTS="--appdir=~/Applications"
 
 # composer
 export PATH="$PATH:~/.composer/vendor/bin"
@@ -210,72 +202,17 @@ export PKG_CONFIG_PATH="/usr/local/opt/ncurses/lib/pkgconfig"
 export RUBY_CONFIGURE_OPTS="--with-openssl-dir=$(brew --prefix openssl@1.1)"
 
 ### Functions ###
-# Git, commit, pull & push
-function gcp () {
-  git add .
-  git commit -am"${*}"
-  git pull
-  git push
-}
-
-# Git commit
-function commit () {
-  git commit -am"${*}"
-}
-
-# Git checkout
-function checkout () {
-  local checkout="${1:-0}"
-
-  if [[ $checkout = 'new' ]];
-  then
-    git checkout -b ${2}
-  else
-    git checkout ${checkout}
-  fi
-}
-
-# Git push
-function push () {
-  local branch=$(git rev-parse --abbrev-ref HEAD)
-  local remote="${1:-origin}"
-  local push="${2:-$branch}"
-
-  if [[ $remote = 'new' ]];
-  then
-    git push -u ${2:-'origin'} ${3:-$branch}
-  else
-    git push ${remote} ${push}
-  fi
-}
-
-# Git merge
-function merge () {
-  if [[ $1 = 'nohistory' ]];
-  then
-    git merge --squash ${2}
-  else
-    git merge ${*}
-  fi
-}
-
-# Git clone
-function clone () {
-  local repository="${1:-0}"
-
-  if [[ $repository = 'other' ]];
-  then
-    git clone git@github.com:${2}.git ${3}
-  else
-    git clone git@github.com:YewTreeWeb/${1}.git ${2}
-  fi
-}
-
 ## SSH key
 function ssh-copy () {
   pbcopy < ~/.ssh/${*}.pub
   ssh-add ~/.ssh/${*}
-  printf "Copied and added SSH key ${*}."
+  printf "Copied and added SSH key ${*}.pub to SSH agent"
+}
+
+# Change node
+function switchNode() {
+  # Switches Node version with NVM and reinstalls packages
+  nvm install node --reinstall-packages-from=${1:-'node'} --latest-npm
 }
 
 # SSH files to servers
@@ -297,37 +234,106 @@ function transfer() {
   fi
 }
 
-# Change node
-function switchNode() {
-  # Switches Node version with NVM and reinstalls packages
-  nvm install node --reinstall-packages-from=${1:-'node'} --latest-npm
+# Download from BBC iPlayer
+function iplayer () {
+    local pid="${1}"
+    if [[ $2 = '--series' || $2 = '--season' ]];
+    then
+        get_iplayer --pid=${pid} --pid-recursive --tv-quality=fhd ${3}
+    else
+        get_iplayer --pid=${pid} --tv-quality=fhd ${3}
+    fi
 }
 
-# Connect to Unifi Controller Device
-function sshUnifi() {
-    ssh MatTeague@192.168.1.${*}
+# Download from YouTube
+## https://github.com/yt-dlp/yt-dlp
+function youtube () {
+    local url="${1}"
+    cd $HOME/Movies
+    if [[ $2 = '--series' || $2 = '--season' ]];
+    then
+        yt-dlp --yes-playlist ${url}
+    else
+        yt-dlp ${url}
+    fi
+}
+
+# Download videos
+function dwnVids () {
+    local u="${1}"
+    local p="${2}"
+    local userAgent="${3}"
+    local url="${4}"
+    cd $HOME/Movies
+    if [[ $userAgent == 'true' ]];
+    then
+        youtube-dl -u $u -p $p --user-agent "Mozilla/5.0" $url
+    else
+        youtube-dl -u $u -p $p $url
+    fi
+}
+
+# Download from Crunchyroll
+## https://github.com/crunchy-labs/crunchy-cli
+function crunchy () {
+    local url="${1}"
+    local login="mathew.teague@outlook.com:Qnv_X*8YMpGvYH9QnqgmgE"
+    cd $HOME/Movies/crunchy
+    if [[ $2 == 'subs' && $3 == 'filter' ]];
+    then
+        crunchy-cli --credentials $login download -a en-US -r best -s en-US -o "{series_name}/Season {season_number}/{series_name}-S{season_number}E{episode_number}-{title}.mp4" ${5} $url\[${4}]
+    elif [[ $2 == 'subs' ]];
+    then
+        crunchy-cli --credentials $login download -a en-US -r best -s en-US -o "{series_name}/Season {season_number}/{series_name}-S{season_number}E{episode_number}-{title}.mp4" ${3} $url
+    elif [[ $2 == 'filter' ]];
+    then
+        crunchy-cli --credentials $login download -a en-US -r best -o "{series_name}/Season {season_number}/{series_name}-S{season_number}E{episode_number}-{title}.mp4" ${4} $url\[${3}]
+    else
+        crunchy-cli --credentials $login download -a en-US -r best -o "{series_name}/Season {season_number}/{series_name}-S{season_number}E{episode_number}-{title}.mp4" ${2} $url
+    fi
+}
+
+# Reinstall Xcode
+function fixXcode {
+    printf 'Removing Xcode...\n'
+    sudo rm -r -f /Library/Developer/CommandLineTools
+    sleep 1
+    printf 'Reinstalling Xcode\n'
+    xcode-select --install;
+}
+
+# Make script global
+function makeGlobal () {
+    local name="${1}"
+    local action="${2}"
+    chmod u+x $name
+    if [[ $action == 'link' ]];
+    then
+        sudo ln $name /usr/local/bin/$name
+    else
+        rm -rf /usr/local/bin/$name
+        sudo mv $name /usr/local/bin/$name
+    fi
+    echo ✅ Script can now be called globally
 }
 
 ### Other ###
 # Eval Ruby env.
 eval "$(rbenv init -)"
 
-# ssh keys
-ssh-add -K ~/.ssh/github ~/.ssh/gitlab ~/.ssh/id_rsa && clear
-
-# Enable 'fast-syntax-highlighting' plugin in ZSH
-source $HOME/.zsh_plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh
-
 # Enable 'completion' plugin in ZSH
 source $HOME/.zsh_plugins/completion.zsh
-
-# Enable 'zsh-autosuggestions' plugin in ZSH
-source $HOME/.zsh_plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Enable 'history' config in ZSH
 source $HOME/.zsh_plugins/history.zsh
 
 # Enable 'key-bindings' config in ZSH
 source $HOME/.zsh_plugins/key-bindings.zsh
+
+# iTerm
+test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
+
+# Fig post block. Keep at the bottom of this file.
+[[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"
 
 ### Greenhouse ###
