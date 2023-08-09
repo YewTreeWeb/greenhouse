@@ -239,10 +239,10 @@ install_zsh_dependecies() {
         fi
     fi
 
-    if [[ ! -f "$HOME/.zsh_plugins/completion.zsh" ]]; then
+    if brew list zsh-completions &> /dev/null; then
         # Install completion plugin
         step "Installing completion plugin..."
-        wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
+        zsh_completion
         cecho "Completion plugin installed." $green
     else
         cecho "Completion plugin already installed. Skipping..." $dim
