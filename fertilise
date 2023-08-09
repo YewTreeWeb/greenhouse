@@ -34,7 +34,7 @@ location="$(cd "$(dirname "$0")" && pwd)"
 
 # Shell environment variables
 zshDIR="$(command -v zsh)"
-zshRC="$HOME/.zshrc"
+shellProfile="$HOME/.zshrc"
 
 ### Text Formatting ###
 
@@ -94,7 +94,8 @@ get_os_version() {
     local os=""
     local version=""
     os="$(get_os)"
-    if [ "$os" == "macOS" ]; then
+
+    if [[ "$os" == "macOS" ]]; then
         version="$(sw_vers -productVersion)"
     fi
     echo $version
@@ -102,7 +103,7 @@ get_os_version() {
 
 # Check if the current session has access to the internet.
 check_internet_connection() {
-    if [ ping -q -w1 -c1 google.com ] &>/dev/null; then
+    if [[ ping -q -w1 -c1 google.com ]] &>/dev/null; then
         cecho "No internet found! Please check your internet connection." $red
         exit 0
     else
@@ -136,32 +137,32 @@ admin_pass() {
 # Create and add content to SSH config file
 create_ssh_config() {
 touch $HOME/.ssh/config
-cat <<EOT >> $HOME/.ssh/config
+cat <<EOF >> $HOME/.ssh/config
 Host *
     AddKeysToAgent yes
-    UseKeychain yes
     ForwardAgent yes
     IdentitiesOnly yes
     IdentityFile ~/.ssh/id_rsa
-EOT
+EOF
 }
 
 # Add Github host to ssh config
 add_github_host () {
-cat <<EOT >> $HOME/.ssh/config
+cat <<EOF >> $HOME/.ssh/config
+
 Host github
     HostName github.com
     User $ghusername
     PreferredAuthentications publickey
     IdentityFile ~/.ssh/id_rsa
-EOT
+EOF
 }
 
 # If user wants to install NPM packages with Yarn, add global path to shell profile
 install_with_yarn() {
-cat <<EOT >> $zshRC
+cat <<EOF >> $shellProfile
 export PATH="$(yarn global bin):$PATH"
-EOT
+EOF
 }
 
 # Find PHP memory files and change the limit to a higher amount
@@ -169,28 +170,30 @@ fix_php_memory() {
 local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
 local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
 
-if [ -d "/usr/local/etc/php/$phpVersion/" ];
+if [[ -d "/usr/local/etc/php/$phpVersion/" ]];
 then
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
 fi
 
-if [ -d "/usr/local/etc/php/$phpShortVersion/" ];
+if [[ -d "/usr/local/etc/php/$phpShortVersion/" ]];
 then
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
     sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
 fi
+
+brew services restart php
 }
 
 # Install and setup ZSH completions
 zsh_completion() {
 brew install zsh-completions
-cat <<EOT >> $zshRC
+cat <<EOF >> $shellProfile
 # ZSH Completion
 if type brew &>/dev/null; then
-    FPATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
+    PATH=${BREW_PREFIX}/share/zsh/site-functions:$sslPATH
 fi
-EOT
+EOF
 rm -f ~/.zcompdump; compinit
 chmod go-w "${BREW_PREFIX}/share"
 chmod go-w "/usr/local/share"
@@ -207,7 +210,7 @@ EOT
 install_zsh_dependecies() {
     # Clone ZSH dependency repos to `~/.zsh/` directory
     cd $HOME
-    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+    if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
         # Download Oh My ZSH
         step "Installing Oh My ZSH..."
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -238,7 +241,7 @@ install_zsh_dependecies() {
         fi
     fi
 
-    if [ ! -f "$HOME/.zsh_plugins/completion.zsh" ]; then
+    if [[ ! -f "$HOME/.zsh_plugins/completion.zsh" ]]; then
         # Install completion plugin
         step "Installing completion plugin..."
         wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/completion.zsh 2>/dev/null
@@ -271,7 +274,7 @@ install_zsh_dependecies() {
         fi
     fi
 
-    if [ ! -f "$HOME/.zsh_plugins/history.zsh" ]; then
+    if [[ ! -f "$HOME/.zsh_plugins/history.zsh" ]]; then
         # Download history config
         step "Installing history config..."
         wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/history.zsh 2>/dev/null
@@ -280,7 +283,7 @@ install_zsh_dependecies() {
         cecho "History config already installed. Skipping..." $dim
     fi
 
-    if [ ! -f "$HOME/.zsh_plugins/key-bindings.zsh" ]; then
+    if [[ ! -f "$HOME/.zsh_plugins/key-bindings.zsh" ]]; then
         # Download key bindings config
         step "Installing key bindings config..."
         wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/lib/key-bindings.zsh 2>/dev/null
@@ -289,6 +292,7 @@ install_zsh_dependecies() {
         cecho "Key bindings config already installed. Skipping..." $dim
     fi
 
+    source $shellProfile
     # Go back to $location
     cd $location
 }
@@ -301,7 +305,7 @@ then
 	step "Backing up system .zshrc..."
 	if [[ ! -d "${location}/storage" ]];
 	then
-		mkdir ${location}/storage
+		sudo mkdir ${location}/storage
 	fi
 
 	if [[ -f $location/storage/.zshrc.bkp ]];
@@ -323,85 +327,195 @@ fi
 
 # Remove system generated .zshrc and use Greenhouse's zsh file
 # step "Replacing system .zshrc with Greenhouse's .zshrc"
-# if [ -f $HOME/.zshrc ];
-# then
-#     rm -rf $HOME/.zshrc
-# fi
-# cp $location/seeds/.zshrc $HOME
+if [[ -f $HOME/.zshrc ]];
+then
+	rm -rf $HOME/.zshrc
+fi
+cp $location/seeds/.zshrc $HOME
 install_zsh_dependecies
+source $shellProfile
 }
 
 # Check if system has an SSL if not create it.
-ssl_check() {
-    local ssl="$HOME/.ssl";
-    local ssl_crt="$ssl/server.crt"
-    local ssl_key="$ssl/server.key"
+ssl_setup() {
+	local sslRoot="$HOME/.ssl";
+	local ssl_crt="$sslRoot/server.crt"
+	local ssl_key="$sslRoot/server.key"
+	local b=$(tput bold)
+	local c=$(tput sgr0)
 
-    local local_ip=$(ipconfig getifaddr $(route get default | grep interface | awk '{print $2}'))
-    # local_ip=999.999.999 # (uncomment for testing)
+	# Get IP
+	local local_ip=$(ipconfig getifaddr $(route get default | grep interface | awk '{print $2}'))
 
-    local domains=(
-        "localhost"
-        "*.localhost"
-        "$local_ip"
-        "127.0.0.1"
-        "::1"
-    )
+	# Set SSL domains
+	local domains=(
+		"localhost"
+		"$local_ip"
+	)
 
-    if test "$(which mkcert)"
-    then
-        step "Installing mkcert local CA..."
-        mkcert -install
-        cecho "CA successfully installed." $green
-    else
-        step "mkcert and nss not installed. Installing..."
-        brew install mkcert nss
-        cecho "mkcert & nss installed." $green
-        printf "\n"
-        step "Installing mkcert local CA..."
-        mkcert -install
-        cecho "CA successfully installed." $green
-    fi
+	# Create a .ssl directory if it doesn't exist.
+	if [[ ! -d "$HOME/.ssl" ]]; then
+		sudo mkdir $HOME/.ssl
+	fi
 
-    if [[ ! -f $ssl_crt ]]; then
-        cecho "Couldn't find an SSL certificate!" $red
-        printf "\n"
-        local make_key=true
-    elif [[ ! $(openssl x509 -noout -text -in $ssl_crt | grep $local_ip) ]]; then
-        cecho "Your IP Address has changed!" $yellow
-        printf "\n"
-        local make_key=true
-    else
-        cecho "SSL certificate found. No need for new SSL. Skipping..." $dim
-        printf "\n"
-    fi
+	if [[ ! -f $ssl_crt ]]; then
+		printf "\n"
+		cecho "🛑  ${b}Couldn't find a SSL certificate:${c}" $red
+		local make_key=true
+	elif [[ ! $(openssl x509 -noout -text -in $ssl_crt | grep $local_ip) ]]; then
+		printf "\n"
+		cecho "🛑  ${b}Your IP Address has changed:${c}" $red
+		local make_key=true
+	else
+		printf "\n"
+		cecho "✅  ${b}Your IP address is still the same. Skipping SSL setup...${c}" $dim
+	fi
 
-    if [[ $make_key == true ]]; then
-        step "Generating a new SSL certificate..."
-        local count=$(( ${#domains[@]} - 1))
-        mkcert ${domains[@]}
+	if [[ $make_key == true ]]; then
+		if test "$(which mkcert)"
+		then
+			cecho "Generating a new SSL certificate..." $green
+			printf "\n"
+		else
+			cecho "Installing mkcert & nss..." $dim
+			brew install mkcert nss 2>/dev/null
+			cecho "Successfully installed mkcert & nss. Generating a new SSL certificate..." $green
+			printf "\n"
+		fi
 
-        # Create Slate's default certificate directory, if it doesn't exist
-        test ! -d $ssl && mkdir $ssls
+		local count=$(( ${#domains[@]} - 1))
+		mkcert ${domains[@]}
 
-        # It appears mkcert bases its filenames off the number of domains passed after the first one.
-        # This script predicts that filename, so it can copy it to Slate's default location.
-        if [[ $count = 0 ]]; then
-            mv $location/localhost.pem $ssl_crt
-            mv $location/localhost-key.pem $ssl_key
-        else
-            mv $location/localhost+$count.pem $ssl_crt
-            mv $location/localhost+$count-key.pem $ssl_key
-        fi
-    fi
+		# It appears mkcert bases its filenames off the number of domains passed after the first one.
+		# This script predicts that filename, so it can copy it to the .ssl directory.
+		if [[ $count = 0 ]]; then
+			sudo mv $location/localhost.pem $ssl_crt
+			sudo mv $location/localhost-key.pem $ssl_key
+		else
+			sudo mv $location/localhost+$count.pem $ssl_crt
+			sudo mv $location/localhost+$count-key.pem $ssl_key
+		fi
+	fi
 }
 
 # Add aliases for WP-CLI to .zshrc
 zsh_wpcli_aliases() {
-cat <<EOT >> $zshRC
+cat <<EOF >> $shellProfile
 # wp-cli quick update
 alias wp-update="wp core update && wp core language update"
-alias wp-asset-update="wp plugin update --all && wp theme update --all"
-alias wp-update-all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
-EOT
+alias wp-update --assets="wp plugin update --all && wp theme update --all"
+alias wp-update --all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
+EOF
+source $shellProfile
+}
+
+# Add VSCode command line tool to .zshrc
+vscode_commandline() {
+cat <<EOF >> $shellProfile
+# Add Visual Studio Code (code)
+export PATH="\$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+EOF
+source $shellProfile
+}
+
+# Add a shopify folder and shortcut to .zshrc
+shopfiy_dir_shortcut() {
+# Create folder for Shopify themes
+if [[ ! -d "$HOME/Sites/Shopify" ]]; then
+	sudo mkdir $HOME/Sites/Shopify
+fi
+# Create folder for Shopify Apps
+if [[ ! -d "$HOME/Developer/Shopify" ]]; then
+	sudo mkdir $HOME/Developer/Shopify
+fi
+
+if grep -q 'st' $shellProfile; then
+	cecho "Shortcut for Shopify themes directory already exists. Skipping..." $dim
+else
+cat <<EOF >> $shellProfile
+# Alias shortcut for Shopify themes directory
+alias st='cd ~/Sites/Shopify'
+EOF
+fi
+if grep -q 'sa' $shellProfile; then
+	cecho "Shortcut for Shopify apps directory already exists. Skipping..." $dim
+else
+cat <<EOF >> $shellProfile
+# Alias shortcut for Shopify apps directory
+alias sa='cd ~/Developer/Shopify'
+EOF
+fi
+source $shellProfile
+}
+
+# Add a shopify folder and shortcut to .zshrc
+wp_dir_shortcut() {
+# Create folder for WordPress sites
+if [[ ! -d "$HOME/Sites/Wordpress" ]]; then
+	sudo mkdir $HOME/Sites/Wordpress
+fi
+
+if grep -q 'wordpress' $shellProfile; then
+	cecho "Shortcut for WordPress sites directory already exists. Skipping..." $dim
+else
+cat <<EOF >> $shellProfile
+# Alias shortcut for WordPress directory
+alias wordpress='cd ~/Sites/WordPress'
+EOF
+fi
+source $shellProfile
+}
+
+# Add a Laravel folder and shortcut to .zshrc
+laravel_dir_shortcut() {
+# Create folder for Laravel sites
+if [[ ! -d "$HOME/Sites/Laravel" ]]; then
+	sudo mkdir $HOME/Sites/Laravel
+fi
+
+if grep -q 'lara' $shellProfile; then
+	cecho "Shortcut for Laravel sites directory already exists. Skipping..." $dim
+else
+cat <<EOF >> $shellProfile
+# Alias shortcut for Laravel directory
+alias lara='cd ~/Sites/Laravel'
+EOF
+fi
+source $shellProfile
+}
+
+# Add a folder and shortcut to .zshrc for static sites
+static_dir_shortcut() {
+# Create folder for static sites
+if [[ ! -d "$HOME/Sites/Static" ]]; then
+	sudo mkdir $HOME/Sites/Static
+fi
+
+if grep -q 'static' $shellProfile; then
+	cecho "Shortcut for the static sites directory already exists. Skipping..." $dim
+else
+cat <<EOF >> $shellProfile
+# Alias shortcut for directory to static sites
+alias static='cd ~/Sites/Static'
+EOF
+fi
+source $shellProfile
+}
+
+# Add a Laravel folder and shortcut to .zshrc
+jekyll_dir_shortcut() {
+# Create folder for Jekyll sites
+if [[ ! -d "$HOME/Sites/Jekyll" ]]; then
+	sudo mkdir $HOME/Sites/Jekyll
+fi
+
+if grep -q 'hyde' $shellProfile; then
+	cecho "Shortcut for Jekyll sites directory already exists. Skipping..." $dim
+else
+cat <<EOF >> $shellProfile
+# Alias shortcut for Jekyll directory
+alias hyde='cd ~/Sites/Jekyll'
+EOF
+fi
+source $shellProfile
 }

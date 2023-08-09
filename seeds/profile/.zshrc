@@ -95,6 +95,9 @@ source $ZSH/oh-my-zsh.sh
 # For a full list of active aliases, run `alias`.
 #
 
+# Disable complection errors
+ZSH_DISABLE_COMPFIX=true
+
 ### Aliases ###
 # Easier navigation: .., ..., ...., ....., ~ and -
 alias .="cd"

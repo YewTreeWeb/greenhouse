@@ -1,0 +1,5 @@
+# set the PATH
+PATH="/usr/local/bin:$PATH"
+
+# this loads nvm.sh and sets the correct PATH before running hook
+. ~/.nvm/nvm.sh
