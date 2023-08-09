@@ -167,22 +167,20 @@ EOF
 
 # Find PHP memory files and change the limit to a higher amount
 fix_php_memory() {
-local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
-local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
+    local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
+    local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
 
-if [[ -d "/usr/local/etc/php/$phpVersion/" ]];
-then
-    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
-    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
-fi
+    if [[ -d "/usr/local/etc/php/$phpVersion/" ]]; then
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
+    fi
 
-if [[ -d "/usr/local/etc/php/$phpShortVersion/" ]];
-then
-    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
-    sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
-fi
+    if [[ -d "/usr/local/etc/php/$phpShortVersion/" ]]; then
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
+    fi
 
-brew services restart php
+    brew services restart php
 }
 
 # Install and setup ZSH completions
@@ -297,45 +295,6 @@ install_zsh_dependecies() {
     cd $location
 }
 
-# Install/Set shell env to ZSH
-install_zsh() {
-# Backup system .zshrc
-if [[ -f $HOME/.zshrc ]];
-then
-	step "Backing up system .zshrc..."
-	if [[ ! -d "${location}/storage" ]];
-	then
-		sudo mkdir ${location}/storage
-	fi
-
-	if [[ -f $location/storage/.zshrc.bkp ]];
-	then
-		read -p "There is a current ZSH backup. Would you like to overwrite it? Y/n " $newZsh
-		if [[ $newZsh =~ ^([yY])$ ]];
-		then
-			rm -rf $location/storage/.zshrc.bkp
-			cp $HOME/.zshrc $location/storage/.zshrc.bkp
-		else
-			cecho ".zshrc backup already exists. Skipping..." $dim
-			printf "\n"
-		fi
-	else
-		cp $HOME/.zshrc $location/storage/.zshrc.bkp
-	fi
-	cecho ".zshrc backup successful." $green
-fi
-
-# Remove system generated .zshrc and use Greenhouse's zsh file
-# step "Replacing system .zshrc with Greenhouse's .zshrc"
-if [[ -f $HOME/.zshrc ]];
-then
-	rm -rf $HOME/.zshrc
-fi
-cp $location/seeds/.zshrc $HOME
-install_zsh_dependecies
-source $shellProfile
-}
-
 # Check if system has an SSL if not create it.
 ssl_setup() {
 	local sslRoot="$HOME/.ssl";
@@ -372,8 +331,7 @@ ssl_setup() {
 	fi
 
 	if [[ $make_key == true ]]; then
-		if test "$(which mkcert)"
-		then
+		if test "$(which mkcert)"; then
 			cecho "Generating a new SSL certificate..." $green
 			printf "\n"
 		else
@@ -434,7 +392,7 @@ if grep -q 'st' $shellProfile; then
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Shopify themes directory
-alias st='cd ~/Sites/Shopify'
+alias st='cd $HOME/Sites/Shopify'
 EOF
 fi
 if grep -q 'sa' $shellProfile; then
@@ -442,7 +400,7 @@ if grep -q 'sa' $shellProfile; then
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Shopify apps directory
-alias sa='cd ~/Developer/Shopify'
+alias sa='cd $HOME/Developer/Shopify'
 EOF
 fi
 source $shellProfile
@@ -460,7 +418,7 @@ if grep -q 'wordpress' $shellProfile; then
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for WordPress directory
-alias wordpress='cd ~/Sites/WordPress'
+alias wordpress='cd $HOME/Sites/WordPress'
 EOF
 fi
 source $shellProfile
@@ -478,7 +436,7 @@ if grep -q 'lara' $shellProfile; then
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Laravel directory
-alias lara='cd ~/Sites/Laravel'
+alias lara='cd $HOME/Sites/Laravel'
 EOF
 fi
 source $shellProfile
@@ -496,7 +454,7 @@ if grep -q 'static' $shellProfile; then
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for directory to static sites
-alias static='cd ~/Sites/Static'
+alias static='cd $HOME/Sites/Static'
 EOF
 fi
 source $shellProfile
@@ -514,7 +472,7 @@ if grep -q 'hyde' $shellProfile; then
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Jekyll directory
-alias hyde='cd ~/Sites/Jekyll'
+alias hyde='cd $HOME/Sites/Jekyll'
 EOF
 fi
 source $shellProfile

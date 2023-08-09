@@ -647,19 +647,11 @@ case $choice in
 
 		# Install NVM to manage Node.
 		step "Installing NVM..."
-		if command -v nvm &> /dev/null; then
-			if [[ ! $(grep "nvm" $location/seeds/brews) ]];
-			then
-				curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.2/install.sh | bash
-			fi
-		fi
-
-		if [[ ! -f "$HOME/.nvmrc" ]];
-		then
+		if [[ ! -f "$HOME/.nvmrc" ]]; then
 			cp $location/seeds/.nvmrc $HOME
 		fi
 
-		cecho "NVM has been installed and configured." $green
+		cecho "NVM configured." $green
         printf "\n\n"
 
 		step "Installing latest Node & LTS Node..."
@@ -667,35 +659,45 @@ case $choice in
 		nvm install --lts node
 		nvm use --lts
 
-		cecho "Successfully installed NVM, latest Node and LTS version\n" $green
-		cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
+        step "Updating NPM..."
+        npm i -g npm@latest
+
+        if [ $? -eq 0 ]; then
+            cecho "Successfully installed NVM, latest Node and LTS version\n" $green
+            cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
+        else
+            cecho "Failed to installed NVM, latest Node and LTS version\n" $red
+        fi
 
 		step "Installing packages..."
 		read -p "Would you like to use yarn, pnpm or npm? y/p/n" installPkg
 
-		if [[ -e $location/seeds/npm ]];
-		then
-			if [[ $installPkg =~ ^([yY])$ ]];
-			then
-				if test "$(which yarn)"
+		if [[ -e $location/seeds/npm ]]; then
+			if [[ $installPkg =~ ^([yY])$ ]]; then
+				if brew list yarn &> /dev/null; then
 				then
 					install_with_yarn
+                    step "Setting Yarn to latest version..."
+                    yarn set version berry
+                    brew update yarn
 					xargs yarn global add < $location/seeds/npm
 				else
 					cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
-					xargs npm install -g < $location/seeds/npm
+                    printf "\n"
+					xargs npm i -g < $location/seeds/npm
 				fi
-			elif [[ $installPkg =~ ^([pP])$ ]];
-			then
-				if test "$(which pnpm)"
-				then
+			elif [[ $installPkg =~ ^([pP])$ ]]; then
+				if brew list pnpm &> /dev/null; then
+                    step "Updating pnpm to latest version..."
+                    brew update pnpm
 					xargs pnpm add -g < $location/seeds/npm
 				else
 					cecho "pnpm not installed. To use pnpm run ${bold}brew install pnpm${normal} or ${bold}curl -fsSL https://get.pnpm.io/install.sh | PNPM_VERSION=7.0.0-rc.5 sh -${normal}. Defaulting to NPM..." $yellow
-					xargs npm install -g < $location/seeds/npm
+                    printf "\n"
+					xargs npm i -g < $location/seeds/npm
 				fi
 			else
-				xargs npm install -g < $location/seeds/npm
+				xargs npm i -g < $location/seeds/npm
 			fi
 		fi
 		cecho "All $installPkg packages installed." $green
@@ -706,14 +708,12 @@ case $choice in
 
 		heading "Setting up Ruby and installing Ruby gems"
 
-		if test ! "$(which rbenv)"
-		then
+		if test ! "$(which rbenv)"; then
 			cecho "Unable to install latest Ruby version. Please check your Homebrew installation and try again." $red
 			printf "\n"
 		else
 			step "Configuring Ruby..."
 			rubyVersion=$(rbenv install -l | grep -v - | tail -1)
-
 			rbenv install $rubyVersion
 
             # Verify the state of your rbenv installation
@@ -724,10 +724,9 @@ case $choice in
 		fi
 
 		# Choose between bundler install or gem install.
-		read -p "Would you like to install global Ruby gems with Bundler or with gem? b/s" rubyGems
+		read -p "Would you like to install global Ruby gems with Bundler or with gem? b/g" rubyGems
 
-		if test ! "$(gem -v)"
-		then
+		if test ! "$(gem -v)"; then
 			cecho "Unable to install Ruby gems.\n" $red
 		else
 			step "Installing Ruby gems..."
@@ -770,7 +769,7 @@ case $choice in
 			fi
 
 			# Create folder for Laravel
-			if [[ "$(which jekyll)" ]]; then
+			if command -v jekyll &> /dev/null; then
 				step "Adding custom Jekyll directory..."
 				jekyll_dir_shortcut
 				cecho "Successfully add a custom Jekyll directory to the Sites directory." $green
@@ -783,84 +782,67 @@ case $choice in
 
 		heading "Installing Composer and packages"
 
-		# Make sure the Brew PHP service has started.
-		brew services start php
+		read -p "Would you like to install Composer? Y/n" iComposer
+        if [[ iComposer =~ ^([yY])$ ]]; then
+            # Make sure the Brew PHP service has started.
+            brew services start php
 
-		if [[ ! "$(which composer)" ]]; then
-            # Check if Composer is already installed.
-            # Check if subdirectoy folder exists
-            if [[ ! -d "$location/pottingshed" ]]; then
-                sudo mkdir "$location/pottingshed"
+            if command -v composer &> /dev/null; then
+                cecho "Composer already installed. Skipping..." $dim
+            else
+                brew install composer
+                # Wait for the installation to finish
+                while ps | grep -q "[b]rew install composer"; do
+                    sleep 5
+                done
+
+                if command -v composer &> /dev/null; then
+                    cecho "Successfully installed Composer." $green
+                else
+                    cecho "Failed to install composer." $red
+                fi
             fi
-            if [[ ! -d "$location/pottingshed/composer" ]]; then
-                sudo mkdir "$location/pottingshed/composer"
+
+            if command -v composer &> /dev/null; then
+                step "Installing Composer packages..."
+                for composer in $(<$location/seeds/composer); do
+                    if test ! "$(composer global info | grep $composer)"; then
+                        installing "Installing $composer"
+                        composer global require $composer >/dev/null
+                        composer config --no-interaction allow-plugins.$composer true
+                        cecho "${bold}✓ $composer package installed${normal}" $green
+                        printf "\n"
+                    else
+                        cecho "$composer has already been installed. Skipped..." $dim
+                        printf "\n"
+                    fi
+                done
+            else
+                cecho "Unable to install Composer packages. Please try again." $red
             fi
-			# Go into composer folder.
-			cd "$location/pottingshed/composer"
 
-			step "Installing Composer..."
+            # Park Laravel Valet
+            if command -v valet &> /dev/null; then
+                step "Setting Laravel Valet's default directory..."
+                cd $HOME/Sites
+                valet park
+                # Create folder for static sites
+                step "Adding custom directory for static sites..."
+                static_dir_shortcut
+                cecho "Successfully set Laravel Valet's default directory to the Sites directory and created custom static directory." $green
+            fi
 
-			# cd $location/pottingshed/composer
-			php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-            php -r "if (hash_file('sha384', 'composer-setup.php') === '756890a4488ce9024fc62c56153228907f1545c228516cbf63f885e036d37e9a59d27d63f46af1d4d07ee0f76181c7d3') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;"
-            php composer-setup.php
-            php -r "unlink('composer-setup.php');"
-
-			# Check if /usr/local/bin/composer exists.
-			if [[ ! -d "/usr/local/bin/composer" ]]; then
-				sudo mkdir /usr/local/bin/composer
-			fi
-
-			# Move composer file to bin so it can be a global command.
-			sudo mv composer.phar /usr/local/bin/composer
-
-			# Switch directory back to project root.
-			cd $location
-
-			# Clean out composer subdirectory to preserve space.
-			rm -rf $location/pottingshed/composer
-
-			cecho "Successfully installed Composer." $green
-		else
-			cecho "Composer already installed. Skipping..." $dim
-		fi
-
-		if [[ "$(which composer)" ]]; then
-			step "Installing Composer packages..."
-			for composer in $(<$location/seeds/composer); do
-				if test ! "$(composer global info | grep $composer)"; then
-					installing "Installing $composer"
-					composer global require $composer >/dev/null
-					cecho "${bold}✓ $composer package installed${normal}" $green
-					printf "\n"
-				else
-					cecho "$composer has already been installed. Skipped..." $dim
-					printf "\n"
-				fi
-			done
-		else
-			cecho "Unable to install Composer packages. Please try again." $red
-		fi
-
-		# Park Laravel Valet
-		if [[ "$(which valet)" ]]; then
-			step "Setting Laravel Valet's default directory..."
-			cd $HOME/Sites
-			valet park
-			# Create folder for static sites
-			step "Adding custom directory for static sites..."
-			static_dir_shortcut
-			cecho "Successfully set Laravel Valet's default directory to the Sites directory and created custom static directory." $green
-		fi
-
-		# Create folder for Laravel
-		if [[ "$(which laravel)" ]]; then
-			step "Adding custom Laravel directory..."
-			laravel_dir_shortcut
-			cecho "Successfully add a custom Laravel directory to the Sites directory." $green
-		fi
-
-		cd $location
+            # Create folder for Laravel
+            if command -v laravel &> /dev/null; then
+                step "Adding custom Laravel directory..."
+                laravel_dir_shortcut
+                cecho "Successfully add a custom Laravel directory to the Sites directory." $green
+            fi
+            cd $location
+        else
+            cecho "Composer install aborted. Skipping..." $dim
+            printf "\n"
+        fi
 
 		###############################################################################
 		# Install WP-CLI and packages #
@@ -868,43 +850,20 @@ case $choice in
 
 		heading "Installing WP-CLI and packages"
 
-		if [[ ! "$(which wp)" ]]; then
+		if command -v wp &> /dev/null; then
+			cecho "WP-CLI already installed. Skipping..." $dim
+		else
 			read -p 'Would you like to install WP-CLI? Y/n' wordpresscli
             if [[ $wordpresscli =~ ^([yY])$ ]];
             then
-                # Check if Composer is already installed.
-                # Check if restore folder exists
-                if [[ ! -d "$location/pottingshed" ]]; then
-                    sudo mkdir "$location/pottingshed"
-                fi
-                if [[ ! -d "$location/pottingshed/wpcli" ]]; then
-                    sudo mkdir "$location/pottingshed/wpcli"
-                fi
-				# Go into composer folder.
-				cd "$location/pottingshed/wpcli"
-
-                step "Installing WP-CLI..."
-                curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-                chmod +x wp-cli.phar
-
-				# Check if bin/wp exists.
-				if [[ ! -d "usr/local/bin/wp" ]]; then
-					sudo mkdir usr/local/bin/wp
-				fi
-
-                # Move wp-cli.phar file to bin so we can just use the wp command.
-                sudo mv wp-cli.phar /usr/local/bin/wp
-
-                # Switch directory back to project root.
-                cd $location
-
-                # Clean out wpcli subdirectory to preserve space.
-                rm -rf $location/pottingshed/wpcli
+                brew install wp-cli
 
 				# Add WP standards with Composer
-				if [[ "$(which composer)" ]]; then
+				if command -v composer &> /dev/null; then
 					composer global require phpcompatibility/phpcompatibility-wp:*
+                    composer config --no-interaction allow-plugins.phpcompatibility/phpcompatibility-wp:* true
 					composer global require wp-coding-standards/wpcs
+                    composer config --no-interaction allow-plugins.wp-coding-standards/wpcs true
 				fi
 
                 # Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
@@ -920,13 +879,10 @@ case $choice in
             else
                 cecho "WP-CLI installation aborted. Skipping..." $dim
             fi
-		else
-			cecho "WP-CLI already installed. Skipping..." $dim
 		fi
 
-        if [[ $wordpresscli =~ ^([yY])$ ]];
-		then
-            if [[ "$(which wp)" ]]; then
+        if [[ $wordpresscli =~ ^([yY])$ ]]; then
+            if command -v wp &> /dev/null; then
                 step "Installing WP-CLI packages..."
                 for wp in $(<$location/seeds/wpcli); do
                     if test ! "$(wp package list | grep $wp)"; then
@@ -939,12 +895,10 @@ case $choice in
                         printf "\n"
                     fi
                 done
-
                 cecho "Successfully installed WP-CLI packages." $green
             else
                 cecho "Unable to install packages. Please try again." $red
             fi
-
         else
             cecho "WP-CLI installation aborted. Skipping package installations..." $dim
         fi
@@ -955,7 +909,7 @@ case $choice in
 
 		heading "Installing system SSL"
 
-		ssl_check
+		ssl_setup
 
 		###############################################################################
 		# Install Meteor #
@@ -983,11 +937,10 @@ case $choice in
 
 		heading "Installing Hyper.js packages"
 
-		if test "$(which hyper)"
-		then
+		if command -v hyper &> /dev/null; then
 			# add shell env to hyper.js
 			step "Configuring Hyper with selected shell env..."
-			sed -i "" -e "s/shell: ''/shell: '$zshDIR'/g" $HOME/.hyper.js
+			sed -i "" -e "s/shell: ''/shell: '$HOME/.zshrc'/g" $HOME/.hyper.js
 			cecho "Successfully configured Hyper shell env." $green
 
 			step "Installing Hyper packages..."
@@ -1012,29 +965,14 @@ case $choice in
 		# Install VSCode extensions #
 		###############################################################################
 
-		heading "Installing VSCode extensions"
+		heading "Configuring VSCode"
 
-		if test "$(which code)"
-		then
-			vscode_commandline
-
-			step "Installing extensions..."
-			for vsCode in $(<$location/seeds/vscode_extensions); do
-				if test ! "$(code --list-extensions | grep $vsCode)"; then
-					installing "Installing $vsCode"
-					code --install-extension $vsCode >/dev/null
-					cecho "${bold}✓ $vsCode package installed${normal}" $green
-					printf "\n"
-				else
-					cecho "$vsCode has already been installed. Skipped..." $dim
-					printf "\n"
-				fi
-			done
-
-			cecho "Successfully installed VSCode extensions." $green
-		else
-			cecho "Unable to install VSCode extensions. Please check your Homebrew cask installation." $red
+		if command -v code &> /dev/null; then
+            rm -rf $HOME/Library/Application\ Support/Code/User/settings.json
+            cp $location/seeds/vscode/settings.json $HOME/Library/Application\ Support/Code/User
 		fi
+
+        cecho "Successfully configured VSCode" $green
 
 		#############################################
 		# Set OSX Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #
@@ -1060,7 +998,6 @@ case $choice in
 		if [[ ! -d "$DIR" ]];
 		then
 			. "$location/seeds/macos"
-
 			cecho "All Mac settings configured and set. You may need to restart your terminal." $green
 			source $shellProfile
 			printf "\n"
