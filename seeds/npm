@@ -1,17 +1,10 @@
-@gridsome/cli
-@sanity/cli
 @vue/cli
-apollo
 create-react-app
 eslint
 firebase-tools
-flightplan
 gatsby
 gulp
 netlify-cli
 npm-check-updates
-parcel-bundler
-serverless
-workbox-cli
 vercel
 yo
