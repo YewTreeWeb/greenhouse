@@ -378,6 +378,10 @@ case $choice in
 			fi
 		fi
 
+        #############################################
+		# Install Alfred or Raycast
+		#############################################
+
 		#############################################
 		# Add ssh-key to GitHub via api
 		# Reference new-computer github account
