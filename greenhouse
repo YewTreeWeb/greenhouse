@@ -147,7 +147,7 @@ case $choice in
 
 		# Make sure system is running the latest Homebrew
 		printf "Updating Homebrew..."
-		brew update 2> /dev/null
+		brew update
 
 		# Installing shell enviornment.
 		step "Setting up the Shell environment..."
