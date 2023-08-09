@@ -379,20 +379,6 @@ case $choice in
 			fi
 		fi
 
-		##############################
-		# Setup shell environment #
-		##############################
-		step "Setting up the Shell environment..."
-        shell=$(echo "${0//-/}")
-
-        if [[ $shell != '/usr/local/bin/zsh' ]]; then
-            install_zsh
-            cecho "Shell environment changed to ZSH." $green
-            printf '\n'
-        else
-            cecho "Shell environment already set to ZSH. Skipping..." $dim
-        fi
-
 		#############################################
 		# Add ssh-key to GitHub via api
 		# Reference new-computer github account
@@ -1965,8 +1951,8 @@ if [[ ! -d "/usr/local/bin/greenhouse" ]];
 then
 	printf '\n'
 	heading "Making Greenhouse global"
+	chmod u+x $location
 	cp -r $location /usr/local/bin
-	chmod +x /usr/local/bin/greenhouse/greenhouse
 	printf "Thank you once again for using GreenHouse. You can now easily check on your plants from anywhere. Have a lovely sunny day and may the plants be ever in your favour!\n"
 	printf '\n'
 	exit;
