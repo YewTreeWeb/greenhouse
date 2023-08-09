@@ -175,31 +175,36 @@ case $choice in
             printf '\n'
         fi
 
-        # Check if ZSH is installed
-        if command -v zsh &> /dev/null; then
-            # Remove system generated .zshrc and use Greenhouse's zsh file
-            # step "Replacing system .zshrc with Greenhouse's .zshrc"
-            if [ -f $HOME/.zshrc ]; then
-                rm -rf $HOME/.zshrc
-            fi
-        fi
-
         ##############################
 		# Use Fig #
 		##############################
         heading "Use Fig"
-
-        read -p "Would you like to have your system managed by Fig? y/n/both `cecho $'\nhint: Choose both if you want manual control as well as Fig control' $dim``print $'\n\n> '`" useFig
-        if [[ $useFig =~ ^([bothBothBOTH])$ || $useFig =~ ^([yY])$ ]]; then
-            brew install fig --cask
-            install_zsh_dependecies
-        fi
-        if [[ $useFig =~ ^([bothBothBOTH])$ ]]; then
-            cp $location/seeds/profile/.zshrc-w-fig $HOME/.zshrc
-        elif [[ $useFig =~ ^([yY])$ ]]; then
-            cp $location/seeds/profile/.figZshrc $HOME/.zshrc
+        # Check if Fig is installed
+        if command -v fig &> /dev/null; then
+            cecho "Fig already installed. Skipping..." $dim
         else
-            cp $location/seeds/profile/.zshrc $HOME/.zshrc
+            # Check if ZSH is installed
+            if command -v zsh &> /dev/null; then
+                # Remove system generated .zshrc and use Greenhouse's zsh file
+                # step "Replacing system .zshrc with Greenhouse's .zshrc"
+                if [ -f $HOME/.zshrc ]; then
+                    rm -rf $HOME/.zshrc
+                fi
+                read -p "Would you like to have your system managed by Fig? y/n/both `cecho $'\nhint: Choose both if you want manual control as well as Fig control' $dim``print $'\n\n> '`" useFig
+                if [[ $useFig =~ ^([bothBothBOTH])$ || $useFig =~ ^([yY])$ ]]; then
+                    brew install fig --cask
+                    install_zsh_dependecies
+                fi
+                if [[ $useFig =~ ^([bothBothBOTH])$ ]]; then
+                    cp $location/seeds/profile/.zshrc-w-fig $HOME/.zshrc
+                elif [[ $useFig =~ ^([yY])$ ]]; then
+                    cp $location/seeds/profile/.figZshrc $HOME/.zshrc
+                else
+                    cp $location/seeds/profile/.zshrc $HOME/.zshrc
+                fi
+            else
+                cecho "ZSH is not installed. Fig setup aborted" $red
+            fi
         fi
 
 		##############################
@@ -263,8 +268,7 @@ case $choice in
 		printf "\n"
 		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
 
-		if [[ -e "$HOME/.ssh/config" ]]
-		then
+		if [[ -e "$HOME/.ssh/config" ]]; then
 			# Check if ssh folder exists.
 			if [[ ! -d "$HOME/.ssh/" ]]; then
 				sudo mkdir $HOME/.ssh
@@ -285,8 +289,7 @@ case $choice in
 			printf "\n"
 			cecho "Successfully created SSH config file. Now creating SSH config file..." $green
 
-			if [[ -e "$HOME/.ssh/config" ]]
-			then
+			if [[ -e "$HOME/.ssh/config" ]]; then
 				cecho "An SSH config file already exists. Skipping... " $dim
 			else
 				step "Creating a new SSH config file with default settings..."
@@ -311,8 +314,7 @@ case $choice in
 
 		if [[ -e $location/seeds/Brewfile ]];
 		then
-			if test "$(which brew)"
-			then
+			if command -v brew &> /dev/null; then
 				step "Installing Brewfile..."
 
 				# Check if user local Applications folder exists.
@@ -339,22 +341,19 @@ case $choice in
                 cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
                 read -p "Would you like to install both or just the Shopify CLI, Theme Kit or none? B/s/t/n" whichShopifyCli
 
-                if [[ $whichShopifyCli =~ ^([sS])$ ]];
-                then
+                if [[ $whichShopifyCli =~ ^([sS])$ ]]; then
                     brew tap shopify/shopify
                     brew install shopify-cli
                     cecho "Shopify CLI successfully installed" $green
 					shopfiy_dir_shortcut
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([tT])$ ]];
-                then
+                elif [[ $whichShopifyCli =~ ^([tT])$ ]]; then
                     brew tap shopify/shopify
                     brew install themekit
                     cecho "Theme Kit successfully installed" $green
 					shopfiy_dir_shortcut
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([bB])$ ]];
-                then
+                elif [[ $whichShopifyCli =~ ^([bB])$ ]]; then
                     brew tap shopify/shopify
                     brew install shopify-cli
                     brew install themekit
