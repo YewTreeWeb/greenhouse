@@ -1,3 +1,6 @@
+## Set global configuration argument 
+ cask_args appdir: "~/Applications"s
+
 ## Taps
 tap "1password/tap"
 tap "github/gh"

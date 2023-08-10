@@ -48,7 +48,7 @@ fi
 # Pre-install check. #
 ##############################
 heading "Checking your internet connection..."
-check_internet_connection
+# check_internet_connection
 
 ##############################
 # Ask user for command #
@@ -148,9 +148,11 @@ case $choice in
 		# Make sure system is running the latest Homebrew
 		printf "Updating Homebrew..."
 		brew update
+        printf "\n"
 
 		# Installing shell enviornment.
 		step "Setting up the Shell environment..."
+		printf "\n\n"
 
         # Check if Zsh is installed through Homebrew
         if brew list zsh &> /dev/null; then
@@ -249,13 +251,18 @@ case $choice in
 		if [[ ! -d "$HOME/.ssh/" ]]; then
 			mkdir $HOME/.ssh
 		fi
-        cd $HOME/.ssh
+		if [ -f $HOME/.ssh/id_rsa ]; then
+			cecho "SSH key 'id_rsa' found in ~/.ssh directory. Skipping... " $dim
+			printf "\n"
+		else
+			cd $HOME/.ssh
 
-		step "Creating key and adding to agent."
-		read -p 'Input email for ssh key: ' sshEmail
-		ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
-		eval "$(ssh-agent -s)"
-		cd $location
+			step "Creating key and adding to agent."
+			read -p 'Input email for ssh key: ' sshEmail
+			ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
+			eval "$(ssh-agent -s)"
+			cd $location
+		fi
 
 		# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
 		step "Adding SSH key to keychain..."
@@ -265,7 +272,6 @@ case $choice in
 		cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
 		cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
 		printf "\n"
-		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
 
 		if [[ -e "$HOME/.ssh/config" ]]; then
             cecho "An SSH config file already exists. Skipping... " $dim
@@ -293,17 +299,17 @@ case $choice in
 			cecho "A gitconfig already exists. Skipping..." $dim
 		fi
 
-        step "Configuring gitconfig..."
-        read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
-        read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
-        read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
-        read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
+        # step "Configuring gitconfig..."
+        # read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
+        # read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
+        # read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
+        # read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
 
-        step "Adding Git config data..."
-        git config --global user.name "${gitUser:-$USER}"
-        git config --global user.email "${gitEmail:-$sshEmail}"
-        git config --global init.defaultBranch ${gitBranchName:-'master'}
-        git config --global ${gitPullRequest:-'pull.rebase false'}
+        # step "Adding Git config data..."
+        # git config --global user.name "${gitUser:-$USER}"
+        # git config --global user.email "${gitEmail:-$sshEmail}"
+        # git config --global init.defaultBranch ${gitBranchName:-'master'}
+        # git config --global ${gitPullRequest:-'pull.rebase false'}
 
         cecho "Git user data has been successfully added to .gitconfig" $green
 
@@ -319,19 +325,39 @@ case $choice in
 				# Check if user local Applications folder exists.
 				if [[ ! -d "$HOME/Applications" ]]; then
                     read -p "Would you like to install casks to a local Applications directory? Y/n " haveLocalApps
-                    if [[ $haveLocalApps =~ ^([yY])$ ]];
+                    if [[ $haveLocalApps =~ ^([yY])$ ]]; then
 					    mkdir "$HOME/Applications"
                         echo "# Homebrew install cask location" >> $HOME/.zshrc
                         echo "export HOMEBREW_CASK_OPTS=\"--appdir=~/Applications\"" >> $HOME/.zshrc
-
-                        echo '## Set global configuration arguments' | cat - $location/seeds/Brewfile > temp && mv temp $location/seeds/Brewfile
-                        echo 'cask_args appdir: "~/Applications"' | cat - $location/seeds/Brewfile > $location/seeds/temp && mv $location/seeds/temp $location/seeds/Brewfile
                     fi
 				fi
 
-				cp $location/seeds/Brewfile $HOME
+				# Create temporary folder
+				if [[ -d "$HOME/Applications" ]]; then
+					# Move into pottingshed/apps
+					if [[ ! -d "$location/pottingshed" ]]; then
+						mkdir "$location/pottingshed"
+					fi
+					cd "$location/pottingshed"
+
+					if [[ ! -d "$location/pottingshed/brew" ]]; then
+						mkdir "$location/pottingshed/brew"
+					fi
+					cd "$location/pottingshed/brew"
+
+					printf '## Set global configuration arguments\ncask_args appdir: "~/Applications"\n\n' | cat - $location/seeds/Brewfile > $location/pottingshed/brew/temp && mv $location/pottingshed/brew/temp $location/pottingshed/brew/Brewfile
+				fi
+
+				# Copy Greenhouse Brewfile to $HOME
+				if [[ ! -d "$HOME/Applications" ]]; then
+					cp $location/seeds/Brewfile $HOME
+				else
+					cp $location/pottingshed/brew/Brewfile $HOME
+				fi
+
+				# Install brew packages
 				cd $HOME
-				brew bundle
+				# brew bundle
 
 				step "Updating MongoDB Binary"
 				brew unlink mongodb
@@ -367,8 +393,7 @@ case $choice in
                 printf "\n"
                 read -p "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit/n" whichShopifyCli
 
-                if [[ $whichShopifyCli =~ ^([cli])$ ]];
-                then
+                if [[ $whichShopifyCli =~ ^([cli])$ ]]; then
                     brew install shopify-cli
                     if command -v shopify-cli; then
                         cecho "Shopify CLI successfully installed" $green
@@ -376,8 +401,7 @@ case $choice in
                         cecho "Failed to install Shopify CLI via Homebrew" $red
                     fi
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([themekit])$ ]];
-                then
+                elif [[ $whichShopifyCli =~ ^([themekit])$ ]]; then
                     brew install themekit
                     if command -v themekit; then
                         cecho "Theme Kit successfully installed" $green
@@ -385,8 +409,7 @@ case $choice in
                         cecho "Failed to install Theme Kit via Homebrew" $red
                     fi
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([both])$ ]];
-                then
+                elif [[ $whichShopifyCli =~ ^([both])$ ]]; then
                     brew install shopify-cli themekit
                     if command -v shopify-cli && command -v themekit; then
                         cecho "Shopify CLI and Theme Kit successfully installed" $green
@@ -404,6 +427,9 @@ case $choice in
 				# Run a Homebrew cleanup.
 				step "Cleaning up Homebrew..."
 				brew cleanup
+				if [[ -d "$HOME/Applications" ]]; then
+					rm -rf $location/pottingshed/brew
+				fi
 
 				cd $location
 			else
@@ -432,7 +458,7 @@ case $choice in
 
                 gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
 
-                if (( $gh_status_code -eq == 201)) then
+                if (( $gh_status_code -eq == 201)); then
                     cecho "GitHub ssh key added successfully!" $green
                     break
                 else
@@ -606,7 +632,6 @@ case $choice in
 		if [[ -e $location/seeds/npm ]]; then
 			if [[ $installPkg =~ ^([yY])$ ]]; then
 				if brew list yarn &> /dev/null; then
-				then
 					install_with_yarn
                     step "Setting Yarn to latest version..."
                     yarn set version berry
@@ -884,6 +909,17 @@ case $choice in
 		fi
 
         cecho "Successfully configured VSCode" $green
+
+		###############################################################################
+		# Install get_iplayer #
+		###############################################################################
+
+
+
+		###############################################################################
+		# Install crunchy-cli #
+		###############################################################################
+
 
 		#############################################
 		# Set OSX Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #

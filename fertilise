@@ -103,12 +103,12 @@ get_os_version() {
 
 # Check if the current session has access to the internet.
 check_internet_connection() {
-    if [[ ping -q -w1 -c1 google.com ]] &>/dev/null; then
-        cecho "No internet found! Please check your internet connection." $red
-        exit 0
-    else
+    if ping -q -w 1 -c 1 google.com &>/dev/null; then
         cecho "You have an internet connection!" $green
         internet=true
+    else
+        cecho "No internet found! Please check your internet connection." $red
+        exit 0
     fi
 }
 
@@ -222,10 +222,8 @@ install_zsh_dependecies() {
     # Check if zsh_plugins exists.
     if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
         mkdir "$HOME/.zsh_plugins"
-        cd "$HOME/.zsh_plugins"
-    else
-        cd "$HOME/.zsh_plugins"
     fi
+    cd "$HOME/.zsh_plugins"
 
     # Check if zsh-syntax-highlighting is installed through Homebrew
     if brew list zsh-syntax-highlighting &> /dev/null; then
