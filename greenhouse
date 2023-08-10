@@ -312,8 +312,7 @@ case $choice in
 
 		heading "Installing Homebrew formulaes and casks"
 
-		if [[ -e $location/seeds/Brewfile ]];
-		then
+		if [[ -e $location/seeds/Brewfile ]]; then
 			if command -v brew &> /dev/null; then
 				step "Installing Brewfile..."
 
@@ -325,14 +324,6 @@ case $choice in
 				cp $location/seeds/Brewfile $HOME
 				cd $HOME
 				brew bundle
-
-				step "Updating Heroku Binary"
-				brew unlink heroku
-				brew link --overwrite heroku
-
-				step "Updating pngnq Binary"
-				brew unlink pngnq
-				brew link --overwrite pngnq-s9
 
 				# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
 				ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
@@ -600,13 +591,12 @@ case $choice in
         # Move into pottingshed/apps
 		if [[ ! -d "$location/pottingshed" ]]; then
 			mkdir "$location/pottingshed"
-			cd "$location/pottingshed"
 		fi
+        cd "$location/pottingshed"
+
 		if [[ ! -d "$location/pottingshed/apps" ]]; then
 			mkdir "$location/pottingshed/apps"
-			cd "$location/pottingshed/apps"
 		fi
-
 		cd "$location/pottingshed/apps"
 
 		if [[ ! -f "$HOME/Applications/Popcorn-Time.app" ]];
