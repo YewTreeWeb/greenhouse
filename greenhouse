@@ -323,6 +323,9 @@ case $choice in
 					    mkdir "$HOME/Applications"
                         echo "# Homebrew install cask location" >> $HOME/.zshrc
                         echo "export HOMEBREW_CASK_OPTS=\"--appdir=~/Applications\"" >> $HOME/.zshrc
+
+                        echo '## Set global configuration arguments' | cat - $location/seeds/Brewfile > temp && mv temp $location/seeds/Brewfile
+                        echo 'cask_args appdir: "~/Applications"' | cat - $location/seeds/Brewfile > $location/seeds/temp && mv $location/seeds/temp $location/seeds/Brewfile
                     fi
 				fi
 
