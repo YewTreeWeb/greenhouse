@@ -233,8 +233,7 @@ case $choice in
 		if [[ ! -f "$HOME/.hyper.js" ]]; then
 			cp $location/seeds/.hyper.js $HOME
 		fi
-		if [[ ! -f "$HOME/.huskyrc" ]];
-		then
+		if [[ ! -f "$HOME/.huskyrc" ]]; then
 			cp $location/seeds/.huskyrc $HOME
 		fi
 		cecho "All dotfiles have been added." $green
@@ -249,8 +248,8 @@ case $choice in
 		# Check if ssh folder exists.
 		if [[ ! -d "$HOME/.ssh/" ]]; then
 			mkdir $HOME/.ssh
-			cd $HOME/.ssh
 		fi
+        cd $HOME/.ssh
 
 		step "Creating key and adding to agent."
 		read -p 'Input email for ssh key: ' sshEmail
@@ -269,33 +268,7 @@ case $choice in
 		cecho "Successfully created SSH config file. Now creating SSH config file..." $green
 
 		if [[ -e "$HOME/.ssh/config" ]]; then
-			# Check if ssh folder exists.
-			if [[ ! -d "$HOME/.ssh/" ]]; then
-				sudo mkdir $HOME/.ssh
-			fi
-			cd $HOME/.ssh
-
-			step "Creating key and adding to agent."
-			read -p 'Input email for ssh key: ' sshEmail
-			ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
-			eval "$(ssh-agent -s)"
-			cd $location
-
-			# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
-			step "Adding SSH key to keychain..."
-			ssh-add $HOME/.ssh/id_rsa
-			cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
-			cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
-			printf "\n"
-			cecho "Successfully created SSH config file. Now creating SSH config file..." $green
-
-			if [[ -e "$HOME/.ssh/config" ]]; then
-				cecho "An SSH config file already exists. Skipping... " $dim
-			else
-				step "Creating a new SSH config file with default settings..."
-				create_ssh_config
-				cecho "Successfully created SSH config file." $green
-			fi
+            cecho "An SSH config file already exists. Skipping... " $dim
 		else
 			step "Creating a new SSH config file with default settings..."
 			create_ssh_config
@@ -306,6 +279,34 @@ case $choice in
             fi
 		fi
 
+        ##############################
+		# Add git user config data #
+		##############################
+
+		heading "Creating gitconfig and adding user info to file..."
+
+        step "Creating gitconfig..."
+		if [[ ! -f "$HOME/.gitconfig" ]];
+		then
+			touch $HOME/.gitconfig
+		else
+			cecho "A gitconfig already exists. Skipping..." $dim
+		fi
+
+        step "Configuring gitconfig..."
+        read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
+        read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
+        read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
+        read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
+
+        step "Adding Git config data..."
+        git config --global user.name "${gitUser:-$USER}"
+        git config --global user.email "${gitEmail:-$sshEmail}"
+        git config --global init.defaultBranch ${gitBranchName:-'master'}
+        git config --global ${gitPullRequest:-'pull.rebase false'}
+
+        cecho "Git user data has been successfully added to .gitconfig" $green
+
 		##############################
 		# Install Brews #
 		##############################
@@ -313,43 +314,82 @@ case $choice in
 		heading "Installing Homebrew formulaes and casks"
 
 		if [[ -e $location/seeds/Brewfile ]]; then
-			if command -v brew &> /dev/null; then
-				step "Installing Brewfile..."
-
+            if command -v brew &> /dev/null; then
+				step "Installing Homebrew packages..."
 				# Check if user local Applications folder exists.
 				if [[ ! -d "$HOME/Applications" ]]; then
-					sudo mkdir "$HOME/Applications"
+                    read -p "Would you like to install casks to a local Applications directory? Y/n " haveLocalApps
+                    if [[ $haveLocalApps =~ ^([yY])$ ]];
+					    mkdir "$HOME/Applications"
+                        echo "# Homebrew install cask location" >> $HOME/.zshrc
+                        echo "export HOMEBREW_CASK_OPTS=\"--appdir=~/Applications\"" >> $HOME/.zshrc
+                    fi
 				fi
 
 				cp $location/seeds/Brewfile $HOME
 				cd $HOME
 				brew bundle
 
-				# Adding add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
-				ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
+				step "Updating MongoDB Binary"
+				brew unlink mongodb
+				brew link --overwrite mongodb-community
+
+                # Install IconJar
+                read -p "Would you like to install IconJar? y/N" installIJ
+                if [[ $installIJ =~ ^([yY])$ ]]; then
+                     # Install iconjar and wait for installation
+                    if ! brew list --cask iconjar &> /dev/null; then
+                        cecho "Installing iconjar via Homebrew..."
+                        brew install --cask iconjar
+
+                        # Wait for the installation to finish
+                        while ps | grep -q "[b]rew install --cask iconjar"; do
+                            sleep 5
+                        done
+
+                        if brew list --cask iconjar &> /dev/null; then
+                            cecho "iconjar installed successfully via Homebrew." $green
+                        else
+                            cecho "Failed to install iconjar via Homebrew." $red
+                        fi
+                    else
+                        cecho "iconjar is already installed via Homebrew. Skipping..." $dim
+                    fi
+                else
+                    cecho "IconJar installation aborted. Skipping..." $dim
+                fi
 
                 # Install Shopify
                 cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
-                read -p "Would you like to install both or just the Shopify CLI, Theme Kit or none? B/s/t/n" whichShopifyCli
+                printf "\n"
+                read -p "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit/n" whichShopifyCli
 
-                if [[ $whichShopifyCli =~ ^([sS])$ ]]; then
-                    brew tap shopify/shopify
+                if [[ $whichShopifyCli =~ ^([cli])$ ]];
+                then
                     brew install shopify-cli
-                    cecho "Shopify CLI successfully installed" $green
-					shopfiy_dir_shortcut
+                    if command -v shopify-cli; then
+                        cecho "Shopify CLI successfully installed" $green
+                    else
+                        cecho "Failed to install Shopify CLI via Homebrew" $red
+                    fi
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([tT])$ ]]; then
-                    brew tap shopify/shopify
+                elif [[ $whichShopifyCli =~ ^([themekit])$ ]];
+                then
                     brew install themekit
-                    cecho "Theme Kit successfully installed" $green
-					shopfiy_dir_shortcut
+                    if command -v themekit; then
+                        cecho "Theme Kit successfully installed" $green
+                    else
+                        cecho "Failed to install Theme Kit via Homebrew" $red
+                    fi
                     printf "\n"
-                elif [[ $whichShopifyCli =~ ^([bB])$ ]]; then
-                    brew tap shopify/shopify
-                    brew install shopify-cli
-                    brew install themekit
-                    cecho "Shopify CLI and Theme Kit successfully installed" $green
-					shopfiy_dir_shortcut
+                elif [[ $whichShopifyCli =~ ^([both])$ ]];
+                then
+                    brew install shopify-cli themekit
+                    if command -v shopify-cli && command -v themekit; then
+                        cecho "Shopify CLI and Theme Kit successfully installed" $green
+                    else
+                        cecho "Failed to install both Shopify CLI and Theme Kit via Homebrew" $red
+                    fi
                     printf "\n"
                 else
                     cecho "Shopify CLI and Theme Kit installation aborted. Skipping..." $dim
@@ -360,8 +400,7 @@ case $choice in
 
 				# Run a Homebrew cleanup.
 				step "Cleaning up Homebrew..."
-				brew cleanup 2> /dev/null
-				brew cleanup -s 2> /dev/null
+				brew cleanup
 
 				cd $location
 			else
@@ -369,7 +408,7 @@ case $choice in
 			fi
 		fi
 
-		#############################################
+        #############################################
 		# Add ssh-key to GitHub via api
 		# Reference new-computer github account
 		#############################################
@@ -405,116 +444,16 @@ case $choice in
 
             # Add Github to ssh config file
             add_github_host
+            # Authenticate with Github
+            gh auth login
         else
             cecho "Adding ssh-key to GitHub aborted. Skipping... " $dim
         fi
 
-		##############################
-		# Install Brews #
-		##############################
-
-		heading "Installing Homebrew formulaes and casks"
-
-		if [[ -e $location/seeds/Brewfile ]]; then
-            if command -v brew &> /dev/null; then
-				step "Installing Homebrew packages..."
-				# Check if user local Applications folder exists.
-				if [[ ! -d "$HOME/Applications" ]]; then
-                    read -p "Would you like to install casks to a local Applications directory? Y/n " haveLocalApps
-                    if [[ $haveLocalApps =~ ^([yY])$ ]];
-					    mkdir "$HOME/Applications"
-                        echo "# Homebrew install cask location" >> $HOME/.zshrc
-                        echo "export HOMEBREW_CASK_OPTS=\"--appdir=~/Applications\"" >> $HOME/.zshrc
-                    fi
-				fi
-
-				cp $location/seeds/Brewfile $HOME
-				cd $HOME
-				brew bundle
-
-				step "Updating MongoDB Binary"
-				brew unlink mongodb
-				brew link --overwrite mongodb-community
-
-                # Install IconJar
-                read -p "Would you like to install IconJar? y/N" installIJ
-                if [[ $installIJ == ]]; then
-                     # Install iconjar and wait for installation
-                    if ! brew list --cask iconjar &> /dev/null; then
-                        cecho "Installing iconjar via Homebrew..."
-                        brew install --cask iconjar
-
-                        # Wait for the installation to finish
-                        while ps | grep -q "[b]rew install --cask iconjar"; do
-                            sleep 5
-                        done
-
-                        if brew list --cask iconjar &> /dev/null; then
-                            cecho "iconjar installed successfully via Homebrew." $green
-                        else
-                            cecho "Failed to install iconjar via Homebrew." $red
-                        fi
-                    else
-                        cecho "iconjar is already installed via Homebrew. Skipping..." $dim
-                    fi
-                else
-                    cecho "IconJar installation aborted. Skipping..." $dim
-                fi
-
-                # Install Shopify
-                cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
-                printf "\n"
-                read -p "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit/n" whichShopifyCli
-
-                if [[ $whichShopifyCli =~ ^([cli])$ ]];
-                then
-                    brew install shopify-cli
-                    if [ $? -eq 0 ]; then
-                        cecho "Shopify CLI successfully installed" $green
-                    else
-                        cecho "Failed to install Shopify CLI via Homebrew" $red
-                    fi
-                    printf "\n"
-                elif [[ $whichShopifyCli =~ ^([themekit])$ ]];
-                then
-                    brew install themekit
-                    if [ $? -eq 0 ]; then
-                        cecho "Theme Kit successfully installed" $green
-                    else
-                        cecho "Failed to install Theme Kit via Homebrew" $red
-                    fi
-                    printf "\n"
-                elif [[ $whichShopifyCli =~ ^([both])$ ]];
-                then
-                    brew install shopify-cli
-                    brew install themekit
-                    if [ $? -eq 0 ]; then
-                        cecho "Shopify CLI and Theme Kit successfully installed" $green
-                    else
-                        cecho "Failed to install both Shopify CLI and Theme Kit via Homebrew" $red
-                    fi
-                    printf "\n"
-                else
-                    cecho "Shopify CLI and Theme Kit installation aborted. Skipping..." $dim
-                fi
-
-                # Run Brew doctor
-                brew doctor
-
-				# Run a Homebrew cleanup.
-				step "Cleaning up Homebrew..."
-				brew cleanup
-				brew cleanup -s 2> /dev/null
-
-				cd $location
-			else
-				cecho "Homebrew may not be installed or you may not have internet. Please try again." $red
-			fi
-		fi
-
         #############################################
 		# Install Alfred or Raycast
 		#############################################
+
         heading "Install Alfred or Raycast"
         read -p "Would you like to install either Alfred or Raycast? alfred/raycast" installAR
 
@@ -551,34 +490,6 @@ case $choice in
                 fi
             fi
         fi
-
-		##############################
-		# Add git user config data #
-		##############################
-
-		heading "Creating gitconfig and adding user info to file..."
-
-        step "Creating gitconfig..."
-		if [[ ! -f "$HOME/.gitconfig" ]];
-		then
-			touch $HOME/.gitconfig
-		else
-			cecho "A gitconfig already exists. Skipping..." $dim
-		fi
-
-        step "Configuring gitconfig..."
-        read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
-        read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
-        read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
-        read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
-
-        step "Adding Git config data..."
-        git config --global user.name "${gitUser:-$USER}"
-        git config --global user.email "${gitEmail:-$sshEmail}"
-        git config --global init.defaultBranch ${gitBranchName:-'master'}
-        git config --global ${gitPullRequest:-'pull.rebase false'}
-
-        cecho "Git user data has been successfully added to .gitconfig" $green
 
 		###############################################################################
 		# Install Apps from the web #
@@ -679,7 +590,7 @@ case $choice in
         step "Updating NPM..."
         npm i -g npm@latest
 
-        if [ $? -eq 0 ]; then
+        if command -v node; then
             cecho "Successfully installed NVM, latest Node and LTS version\n" $green
             cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
         else
