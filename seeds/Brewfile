@@ -2,9 +2,9 @@
 cask_args appdir: "~/Applications"
 
 ## Taps
+tap "1password/tap"
 tap "dart-lang/dart"
 tap "github/gh"
-tap "heroku/brew"
 tap "homebrew/bundle"
 tap "homebrew/cask"
 tap "homebrew/cask-drivers"
@@ -84,6 +84,7 @@ brew "zsh-syntax-highlighting"
 
 ## Install applications
 cask "1password"
+cask "1password-cli"
 cask "adobe-acrobat-reader"
 brew "aerial"
 cask "android-studio"
