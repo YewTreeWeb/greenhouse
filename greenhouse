@@ -168,7 +168,7 @@ case $choice in
             if ! fgrep -q "${BREW_PREFIX}/bin/zsh" /etc/shells; then
                 echo "${BREW_PREFIX}/bin/zsh" | sudo tee -a /etc/shells;
                 chsh -s "${BREW_PREFIX}/bin/zsh";
-            fi;
+            fi
             if [ $? -eq 0 ]; then
                 cecho "Shell environment changed to ZSH." $green
             else
@@ -268,7 +268,7 @@ case $choice in
 		step "Adding SSH key to keychain..."
 		ssh-add --apple-use-keychain $HOME/.ssh/id_rsa
         echo "# ssh keys" >> $HOME/.zshrc
-        echo "ssh-add --apple-use-keychain $HOME/.ssh/id_rsa" >> $HOME/.zshrc
+        echo "ssh-add $HOME/.ssh/id_rsa" >> $HOME/.zshrc
 		cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
 		cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
 		printf "\n"
@@ -299,17 +299,20 @@ case $choice in
 			cecho "A gitconfig already exists. Skipping..." $dim
 		fi
 
-        # step "Configuring gitconfig..."
-        # read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
-        # read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
-        # read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
-        # read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
+        step "Configuring gitconfig..."
+        read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
 
-        # step "Adding Git config data..."
-        # git config --global user.name "${gitUser:-$USER}"
-        # git config --global user.email "${gitEmail:-$sshEmail}"
-        # git config --global init.defaultBranch ${gitBranchName:-'master'}
-        # git config --global ${gitPullRequest:-'pull.rebase false'}
+        read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
+
+        read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
+
+        read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
+
+        step "Adding Git config data..."
+        git config --global user.name "${gitUser:-$USER}"
+        git config --global user.email "${gitEmail:-$sshEmail}"
+        git config --global init.defaultBranch ${gitBranchName:-'master'}
+        git config --global ${gitPullRequest:-'pull.rebase false'}
 
         cecho "Git user data has been successfully added to .gitconfig" $green
 
@@ -1024,7 +1027,7 @@ case $choice in
 
 
 		#############################################
-		# Set OSX Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #
+		# Set macOS Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #
 		#############################################
 
 		# Close any open System Preferences panes, to prevent them from overriding
@@ -1071,9 +1074,12 @@ case $choice in
 			exit;
 		fi
 
-		if [[ ! -d "$location/storage" ]];
-		then
-			mkdir $location/storage
+		if [[ ! -d "$location/pottingshed" ]]; then
+			mkdir "$location/pottingshed"
+		fi
+
+		if [[ ! -d "$location/pottingshed/backups" ]]; then
+			mkdir "$location/pottingshed/backups"
 		fi
 
     printf "
@@ -1092,45 +1098,42 @@ case $choice in
 
 		case $update in
 			1)
-				###############################################################################
+				#########################################################################
 				# Updating all #
-				###############################################################################
-
-                if [[ ! -d "${location}/storage" ]];
-                then
-                    mkdir ${location}/storage
-                fi
+				#########################################################################
+				timestamp=$(date +"%Y%m%d%H%M%S")
 
 				# Update Homebrew
-				if test "$(which brew)"
-				then
-					step "Backing up Brew before update..."
-					if [[ ! -f ${location}/storage/Brewfile.bkp ]];
-					then
-						brew bundle dump --file=${location}/storage/Brewfile.bkp
+				if command -v brew &> /dev/null; then
+					local brew_backup_dir="$location/pottingshed/backups/brew"
+					local brewfile_path="$HOME/Brewfile"
+					# Get the number of existing backup files
+    				local brew_num_backups=$(ls -1 "$brew_backup_dir" | wc -l)
+					# Create the backup file name
+					local brew_backup_filename="Brewfile_backup_${timestamp}"
+
+					step "Backing up Homebrew before update..."
+					if [[ ! -f brewfile_path ]]; then
+						brew bundle dump --file=${brewfile_path}
+						brew bundle dump --file=${$brew_backup_dir}/${brew_backup_filename}
 					else
-						read -p "There is a current Brewfile backup. Would you like to overwrite it? Y/n " $newBrewfile
-						if [[ $newBrewfile =~ ^([yY])$ ]];
-						then
-							rm -rf ${location}/storage/Brewfile.bkp
-							brew bundle dump --file=${location}/storage/Brewfile.bkp
-						else
-							cecho "Homebrew backup already exists. Skipping..." $dim
-							printf "\n"
+						# Keep up to five backup versions
+						if [[ $brew_num_backups -ge 5 ]]; then
+							local oldest_backup=$(ls -1 "$brew_backup_dir" | sort | head -n 1)
+							rm -f "$brew_backup_dir/$oldest_backup"
 						fi
+
+						cp "$brewfile_path" "$brew_backup_dir/$brew_backup_filename"
 					fi
-					if [[ -f $HOME/Brewfile.lock.json ]];
-					then
-						cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
-					fi
-					cecho "Successfully backed up Ruby gems." $green
+
+					cecho "Brewfile backup created: $brew_backup_filename" $green
 					printf "\n"
 					step "Updating Brew..."
 					brew update
 					brew upgrade
 					brew cleanup
 					brew cleanup -s
-					cecho "Successfully updated all Homebrew to the latest versions." $green
+					cecho "Successfully updated Homebrew and Homebrew packages to the latest version." $green
 					printf "\n"
 				else
 					cecho "Can't find an installtion of Homebrew. Skipping..." $dim
@@ -1445,15 +1448,15 @@ case $choice in
 				if test "$(which brew)"
 				then
 					step "Backing up Brew before update..."
-					if [[ ! -f ${location}/storage/Brewfile.bkp ]];
+					if [[ ! -f ${location}/pottingshed/backups/Brewfile.bkp ]];
 					then
-						brew bundle dump --file=${location}/storage/Brewfile.bkp
+						brew bundle dump --file=${location}/pottingshed/backups/Brewfile.bkp
 					else
 						read -p "There is a current Brewfile backup. Would you like to overwrite it? Y/n " $newBrewfile
 						if [[ $newBrewfile =~ ^([yY])$ ]];
 						then
-							rm -rf ${location}/storage/Brewfile.bkp
-							brew bundle dump --file=${location}/storage/Brewfile.bkp
+							rm -rf ${location}/pottingshed/backups/Brewfile.bkp
+							brew bundle dump --file=${location}/pottingshed/backups/Brewfile.bkp
 						else
 							cecho "Homebrew backup aborted. Skipping..." $dim
 							printf "\n"
@@ -1724,15 +1727,15 @@ case $choice in
 			cecho "Unable to backup Homebrew. Please check your Homebrew installation." $red
 		else
 			step "Backing up Homebrew..."
-			if [[ ! -f ${location}/storage/Brewfile.bkp ]];
+			if [[ ! -f ${location}/pottingshed/backups/Brewfile.bkp ]];
 			then
-				HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+				HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/pottingshed/backups/Brewfile.bkp
 			else
 				read -p "There is a current Brewfile backup. Would you like to overwrite it? Y/n " $newBrewfile
 				if [[ $newBrewfile =~ ^([yY])$ ]];
 				then
-					rm -rf ${location}/storage/Brewfile.bkp
-					HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/storage/Brewfile.bkp
+					rm -rf ${location}/pottingshed/backups/Brewfile.bkp
+					HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file=${location}/pottingshed/backups/Brewfile.bkp
 				else
 					cecho "Homebrew backup aborted. Skipping..." $dim
 					printf "\n"
