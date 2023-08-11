@@ -732,6 +732,19 @@ case $choice in
 			fi
 		fi
 
+		##############################
+		# Fix PHP memory error #
+		##############################
+
+		heading "Fix PHP memory error"
+
+		step "Fixing PHP memory errors..."
+        # Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
+		fix_php_memory
+
+		cecho "PHP memory error resolved" $green
+		printf "\n"
+
 		###############################################################################
 		# Install Composer and packages #
 		###############################################################################
@@ -821,9 +834,6 @@ case $choice in
 					composer global require wp-coding-standards/wpcs
                     composer config --no-interaction allow-plugins.wp-coding-standards/wpcs true
 				fi
-
-                # Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
-                fix_php_memory
 
                 # Add helpful aliases to .zshrc
                 zsh_wpcli_aliases
