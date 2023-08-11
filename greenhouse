@@ -395,7 +395,7 @@ case $choice in
 
                 if [[ $whichShopifyCli =~ ^([cli])$ ]]; then
                     brew install shopify-cli
-                    if command -v shopify-cli; then
+                    if command -v shopify-cli &> /dev/null; then
                         cecho "Shopify CLI successfully installed" $green
                     else
                         cecho "Failed to install Shopify CLI via Homebrew" $red
@@ -403,7 +403,7 @@ case $choice in
                     printf "\n"
                 elif [[ $whichShopifyCli =~ ^([themekit])$ ]]; then
                     brew install themekit
-                    if command -v themekit; then
+                    if command -v themekit &> /dev/null; then
                         cecho "Theme Kit successfully installed" $green
                     else
                         cecho "Failed to install Theme Kit via Homebrew" $red
@@ -411,7 +411,7 @@ case $choice in
                     printf "\n"
                 elif [[ $whichShopifyCli =~ ^([both])$ ]]; then
                     brew install shopify-cli themekit
-                    if command -v shopify-cli && command -v themekit; then
+                    if command -v shopify-cli  &> /dev/null && command -v themekit &> /dev/null; then
                         cecho "Shopify CLI and Theme Kit successfully installed" $green
                     else
                         cecho "Failed to install both Shopify CLI and Theme Kit via Homebrew" $red
@@ -427,11 +427,11 @@ case $choice in
 				# Run a Homebrew cleanup.
 				step "Cleaning up Homebrew..."
 				brew cleanup
+				cd $location
 				if [[ -d "$HOME/Applications" ]]; then
+                    # Remove pottingshed/brew to save space
 					rm -rf $location/pottingshed/brew
 				fi
-
-				cd $location
 			else
 				cecho "Homebrew may not be installed or you may not have internet. Please try again." $red
 			fi
@@ -619,7 +619,7 @@ case $choice in
         step "Updating NPM..."
         npm i -g npm@latest
 
-        if command -v node; then
+        if command -v node &> /dev/null; then
             cecho "Successfully installed NVM, latest Node and LTS version\n" $green
             cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
         else
@@ -914,11 +914,103 @@ case $choice in
 		# Install get_iplayer #
 		###############################################################################
 
+		heading "get_iplayer"
 
+        if command -v get_iplayer &> /dev/null; then
+            cecho "get_iplayer already installed. Skipping..." $dim
+        else
+            # Move into pottingshed/apps
+            if [[ ! -d "$location/pottingshed" ]]; then
+                mkdir "$location/pottingshed"
+            fi
+            cd "$location/pottingshed"
+
+            if [[ ! -d "$location/pottingshed/iplayer" ]]; then
+                mkdir "$location/pottingshed/iplayer"
+            fi
+            cd "$location/pottingshed/iplayer"
+
+            step "Installing get_iplayer..."
+            wget https://github.com/get-iplayer/get_iplayer_macos/releases/download/3.31.0/get_iplayer-3.31.0-macos-x86_64.pkg
+            sudo installer -pkg get_iplayer-3.31.0-macos-x86_64.pkg -target /Applications
+
+            if command -v get_iplayer &> /dev/null; then
+                cecho "Successfully installed get_iplayer" $green
+            else
+                cecho "Failed to install get_iplayer" $red
+            fi
+
+            cd $location
+            rm -rf $location/pottingshed/iplayer
+        fi
 
 		###############################################################################
 		# Install crunchy-cli #
 		###############################################################################
+
+		heading "crunchy-cli"
+
+        if command -v cargo &> /dev/null; then
+            cecho "Cargo already installed. Skipping..." $dim
+        else
+            step "Downloading and installing Cargo..."
+		    yes 1 | curl https://sh.rustup.rs -sSf | sh
+
+            # Wait for the installation to finish
+            while ps | grep -q "[s]h.rustup.rs"; do
+                sleep 5
+            done
+
+            step "Activating Cargo..."
+            source "$HOME/.cargo/env"
+            printf "\n"
+
+            if command -v cargo &> /dev/null; then
+                cecho "cargo installed successfully." $green
+                printf "\n\n"
+            else
+                cecho "Failed to install cargo." $red
+                printf "\n"
+                cecho "Skipping crunchy-cli installation..." $dim
+                printf "\n\n"
+            fi
+        fi
+
+        if command -v cargo &> /dev/null; then
+            if command -v crunchy-cli &> /dev/null; then
+                cecho "crunchy-cli already installed. Skipping..." $dim
+                printf "\n\n"
+            else
+                step "Installing crunchy-cli..."
+                # Move into pottingshed/apps
+                if [[ ! -d "$location/pottingshed" ]]; then
+                    mkdir "$location/pottingshed"
+                fi
+                cd "$location/pottingshed"
+
+                if [[ ! -d "$location/pottingshed/crunchy" ]]; then
+                    mkdir "$location/pottingshed/crunchy"
+                fi
+                cd "$location/pottingshed/crunchy"
+
+                git clone https://github.com/crunchy-labs/crunchy-cli
+                cd crunchy-cli
+                cargo build --release
+                cargo install --force --path .
+
+                # Check for crunchy-cli installation
+                if command -v crunchy-cli &> /dev/null; then
+                    cecho "Successfully installed crunchy-cli" $green
+                    printf "\n"
+                else
+                    cecho "Failed to install crunchy-cli." $red
+                    printf "\n\n"
+                fi
+
+                cd $location
+                rm -rf $location/pottingshed/crunchy
+            fi
+        fi
 
 
 		#############################################
