@@ -947,13 +947,14 @@ case $choice in
             wget https://github.com/get-iplayer/get_iplayer_macos/releases/download/3.31.0/get_iplayer-3.31.0-macos-x86_64.pkg
             sudo installer -pkg get_iplayer-3.31.0-macos-x86_64.pkg -target /Applications
 
+            cd $location
+
             if command -v get_iplayer &> /dev/null; then
                 cecho "Successfully installed get_iplayer" $green
             else
                 cecho "Failed to install get_iplayer" $red
             fi
 
-            cd $location
             rm -rf $location/pottingshed/iplayer
         fi
 
@@ -1011,6 +1012,8 @@ case $choice in
                 cargo build --release
                 cargo install --force --path .
 
+                cd $location
+
                 # Check for crunchy-cli installation
                 if command -v crunchy-cli &> /dev/null; then
                     cecho "Successfully installed crunchy-cli" $green
@@ -1020,7 +1023,6 @@ case $choice in
                     printf "\n\n"
                 fi
 
-                cd $location
                 rm -rf $location/pottingshed/crunchy
             fi
         fi
