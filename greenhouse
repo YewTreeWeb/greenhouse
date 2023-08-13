@@ -361,6 +361,7 @@ case $choice in
 				# Install brew packages
 				cd $HOME
 				# brew bundle
+                brew bundle
 
 				step "Updating MongoDB Binary"
 				brew unlink mongodb
