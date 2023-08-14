@@ -727,7 +727,7 @@ case $choice in
 						printf "\n"
 					fi
 				done
-
+                rbenv rehash
 				cecho "Successfully installed Ruby gems." $green
 			fi
 
@@ -891,11 +891,6 @@ case $choice in
 		heading "Installing Hyper.js packages"
 
 		if command -v hyper &> /dev/null; then
-			# add shell env to hyper.js
-			step "Configuring Hyper with selected shell env..."
-			sed -i "" -e "s/shell: ''/shell: '$HOME/.zshrc'/g" $HOME/.hyper.js
-			cecho "Successfully configured Hyper shell env." $green
-
 			step "Installing Hyper packages..."
 			for hyper in $(<$location/seeds/hyper); do
 				if test ! "$(hyper list | grep $hyper)"; then
@@ -989,8 +984,27 @@ case $choice in
             else
                 cecho "Failed to install cargo." $red
                 printf "\n"
-                cecho "Skipping crunchy-cli installation..." $dim
-                printf "\n\n"
+				cecho "Retrying..." $dim
+                printf "\n"
+				brew install rust
+
+				# Wait for the installation to finish
+				while ps | grep -q "[b]rew install rust"; do
+					sleep 5
+				done
+
+				step "Activating Cargo..."
+				source "$HOME/.cargo/env"
+				printf "\n"
+				if command -v cargo &> /dev/null; then
+					cecho "cargo installed successfully." $green
+					printf "\n\n"
+				else
+					cecho "Failed to install cargo." $red
+               		printf "\n"
+					cecho "Skipping crunchy-cli installation..." $dim
+					printf "\n\n"
+				fi
             fi
         fi
 
@@ -1107,8 +1121,6 @@ case $choice in
 				#########################################################################
 				# Updating all #
 				#########################################################################
-				timestamp=$(date +"%Y%m%d%H%M%S")
-
 				# Update Homebrew
 				if command -v brew &> /dev/null; then
 					local brew_backup_dir="$location/pottingshed/backups/brew"
@@ -1116,19 +1128,16 @@ case $choice in
 					# Get the number of existing backup files
     				local brew_num_backups=$(ls -1 "$brew_backup_dir" | wc -l)
 					# Create the backup file name
-					local brew_backup_filename="Brewfile_backup_${timestamp}"
+					local brew_backup_filename="Brewfile_backup"
 
 					step "Backing up Homebrew before update..."
 					if [[ ! -f brewfile_path ]]; then
 						brew bundle dump --file=${brewfile_path}
 						brew bundle dump --file=${$brew_backup_dir}/${brew_backup_filename}
 					else
-						# Keep up to five backup versions
-						if [[ $brew_num_backups -ge 5 ]]; then
-							local oldest_backup=$(ls -1 "$brew_backup_dir" | sort | head -n 1)
-							rm -f "$brew_backup_dir/$oldest_backup"
+						if [[ -f "$brew_backup_dir/$brew_backup_filename" ]]; then
+							rm -rf "$brew_backup_dir/$brew_backup_filename"
 						fi
-
 						cp "$brewfile_path" "$brew_backup_dir/$brew_backup_filename"
 					fi
 
@@ -1148,38 +1157,22 @@ case $choice in
 
 				# Update Ruby
                 step "Backing up Ruby gems before update..."
-                if [[ -f $HOME/Gemfile ]];
-                then
-					if [[ -f $location/storage/Gemfile.bkp ]];
+                if [[ -f $HOME/Gemfile ]]; then
+					if [[ -f $location/pottingshed/Gemfile_backup ]];
 					then
-						read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
-						if [[ $newGemfile =~ ^([yY])$ ]];
-						then
-							rm -rf $location/storage/Gemfile.bkp $location/storage/Gemfile.lock.bkp
-							cp $HOME/Gemfile $location/storage/Gemfile.bkp
-                    		cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
-						else
-							cecho "Gemfile backup already exists. Skipping..." $dim
-							printf "\n"
-						fi
+						rm -rf $location/pottingshed/Gemfile.bkp $location/pottingshed/Gemfile.lock.bkp
+						cp $HOME/Gemfile $location/pottingshed/Gemfile_backup
+						cp $HOME/Gemfile.lock $location/pottingshed/Gemfile_backup.lock
 					else
-                    	cp $HOME/Gemfile $location/storage/Gemfile.bkp
-                    	cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+                    	cp $HOME/Gemfile $location/pottingshed/Gemfile_backup
+                    	cp $HOME/Gemfile.lock $location/pottingshed/Gemfile_backup.lock
 					fi
                 else
-					if [[ -f $location/storage/gems.bkp ]];
-					then
-						read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
-						if [[ $newGemfile =~ ^([yY])$ ]];
-						then
-							rm -rf $location/storage/gems.bkp
-							gem list --no-versions >> $location/storage/gems.bkp
-						else
-							cecho "Gemfile backup already exists. Skipping..." $dim
-							printf "\n"
-						fi
+					if [[ -f $location/pottingshed/gems_backup ]]; then
+						rm -rf $location/pottingshed/gems_backup
+						gem list --no-versions >> $location/pottingshed/gems_backup
 					else
-                    	gem list --no-versions >> $location/storage/gems.bkp
+                    	gem list --no-versions >> $location/pottingshed/gems_backup
 					fi
                 fi
 				cecho "Successfully backed up Ruby gems." $green
@@ -1228,36 +1221,36 @@ case $choice in
                     step "Backing up Composer packages before update..."
 					if [[ -f $HOME/.composer/composer.json ]];
 					then
-						if [[ -f $location/storage/composer.json.bkp ]];
+						if [[ -f $location/pottingshed/composer.json.bkp ]];
 						then
 							read -p "There is a current Composer backup. Would you like to overwrite it? Y/n " $newComposer
 							if [[ $newComposer =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/composer.json.bkp
-								cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+								rm -rf $location/pottingshed/composer.json.bkp
+								cp $HOME/.composer/composer.json $location/pottingshed/composer.json.bkp
 							else
 								cecho "Composer backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+							cp $HOME/.composer/composer.json $location/pottingshed/composer.json.bkp
 						fi
 					fi
 					if [[ -f $HOME/.composer/composer.lock ]];
 					then
-						if [[ -f $location/storage/composer.lock.bkp ]];
+						if [[ -f $location/pottingshed/composer.lock.bkp ]];
 						then
 							read -p "There is a current Composer Lockfile backup. Would you like to overwrite it? Y/n " $newComposerLock
 							if [[ $newComposerLock =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/composer.lock.bkp
-								cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+								rm -rf $location/pottingshed/composer.lock.bkp
+								cp $HOME/.composer/composer.lock $location/pottingshed/composer.lock.bkp
 							else
 								cecho "Composer Lockfile backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+							cp $HOME/.composer/composer.lock $location/pottingshed/composer.lock.bkp
 						fi
 					fi
 					cecho "Successfully backed up Composer." $green
@@ -1277,36 +1270,36 @@ case $choice in
                     step "Backing up WP-CLI packages before update..."
 					if [[ -f $HOME/.wp-cli/packages/composer.json ]];
 					then
-						if [[ -f $location/storage/wp-composer.json.bkp ]];
+						if [[ -f $location/pottingshed/wp-composer.json.bkp ]];
 						then
 							read -p "There is a current CWP-CLI backup. Would you like to overwrite it? Y/n " $newWpComposer
 							if [[ $newWpComposer =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/composer.json.bkp
-								cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+								rm -rf $location/pottingshed/composer.json.bkp
+								cp $HOME/.wp-cli/packages/composer.json $location/pottingshed/wp-composer.json.bkp
 							else
 								cecho "WP-CLI backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+							cp $HOME/.wp-cli/packages/composer.json $location/pottingshed/wp-composer.json.bkp
 						fi
 					fi
 					if [[ -f $HOME/.wp-cli/packages/composer.lock ]];
 					then
-						if [[ -f $location/storage/wp-composer.lock.bkp ]];
+						if [[ -f $location/pottingshed/wp-composer.lock.bkp ]];
 						then
 							read -p "There is a current WP-CLI Lockfile backup. Would you like to overwrite it? Y/n " $newWpComposerLock
 							if [[ $newWpComposerLock =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/wp-composer.lock.bkp
-								cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+								rm -rf $location/pottingshed/wp-composer.lock.bkp
+								cp $HOME/.wp-cli/packages/composer.lock $location/pottingshed/wp-composer.lock.bkp
 							else
 								cecho "WP-CLI Lockfile backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+							cp $HOME/.wp-cli/packages/composer.lock $location/pottingshed/wp-composer.lock.bkp
 						fi
 					fi
                     wp cli update
@@ -1319,32 +1312,26 @@ case $choice in
                 fi
 
 				# Update NVM
-				if [[ "$(which nvm)" ]];
-				then
+				if command -v nvm; then
                     step "Backing up NPM packages before update..."
-                    if [[ -f $location/storage/npm.bkp ]];
-                    then
-                        read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
-                        if [[ $newNPM =~ ^([yY])$ ]];
-                        then
-                            rm -rf $location/storage/npm.bkp
-                            npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
-                        else
-                            cecho "NPM backup already exists. Skipping..." $dim
-                            printf "\n"
-                        fi
+                    if [[ -f $location/pottingshed/npm.bkp ]]; then
+						rm -rf $location/pottingshed/npm.bkp
+						npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/pottingshed/npm.bkp
                     else
-				        npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+				        npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/pottingshed/npm.bkp
                     fi
                     cecho "NPM packages successfully updated." $green
 					printf "\n"
 
 					step "Updating Node and NPM..."
-                    nodeVersion=$(node -v)
-					nvm install node --reinstall-packages-from=$nodeVersion --latest-npm
+					default_version=$(nvm version default)
+					# Switches Node version with NVM and reinstalls packages
+					nvm install --lts --latest-npm --reinstall-packages-from=${$default_version}
+					nvm install node --latest-npm --reinstall-packages-from=${$default_version}
 					nvm use node
 					nvm alias default node
-					cecho "Node version successfully updated and changed to $(node -v)." $green
+					printf \n
+					echo "Node has been successfullyupdated and NPM packages from the NVM Node version $default_version, have been reinstalled."
                     printf "\n"
 				else
 					cecho "NVM not updated or changed. Aborted!" $red
@@ -1388,19 +1375,19 @@ case $choice in
 				read -p "Would you like to use yarn, pnpm or npm to update your packages? y/p/n" updatePkg
 
                 step "Backing up packages before update..."
-				if [[ -f $location/storage/npm.bkp ]];
+				if [[ -f $location/pottingshed/npm.bkp ]];
                 then
                     read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
                     if [[ $newNPM =~ ^([yY])$ ]];
                     then
-                        rm -rf $location/storage/npm.bkp
-                        npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                        rm -rf $location/pottingshed/npm.bkp
+                        npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/pottingshed/npm.bkp
                     else
                         cecho "NPM backup already exists. Skipping..." $dim
                         printf "\n"
                     fi
                 else
-                    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/pottingshed/npm.bkp
                 fi
                 cecho "Packages successfully updated." $green
                 printf "\n"
@@ -1470,7 +1457,7 @@ case $choice in
 					fi
 					if [[ -f $HOME/Brewfile.lock.json ]];
 					then
-						cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
+						cp $HOME/Brewfile.lock.json $location/pottingshed/Brewfile.lock.json.bkp
 					fi
 					cecho "Successfully backed all Homebrew packages." $green
 					step "Updating Brew..."
@@ -1504,36 +1491,36 @@ case $choice in
                     step "Backing up Composer installs before update..."
                     if [[ -f $HOME/.composer/composer.json ]];
 					then
-						if [[ -f $location/storage/composer.json.bkp ]];
+						if [[ -f $location/pottingshed/composer.json.bkp ]];
 						then
 							read -p "There is a current Composer backup. Would you like to overwrite it? Y/n " $newComposer
 							if [[ $newComposer =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/composer.json.bkp
-								cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+								rm -rf $location/pottingshed/composer.json.bkp
+								cp $HOME/.composer/composer.json $location/pottingshed/composer.json.bkp
 							else
 								cecho "Composer backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+							cp $HOME/.composer/composer.json $location/pottingshed/composer.json.bkp
 						fi
 					fi
 					if [[ -f $HOME/.composer/composer.lock ]];
 					then
-						if [[ -f $location/storage/composer.lock.bkp ]];
+						if [[ -f $location/pottingshed/composer.lock.bkp ]];
 						then
 							read -p "There is a current Composer Lockfile backup. Would you like to overwrite it? Y/n " $newComposerLock
 							if [[ $newComposerLock =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/composer.lock.bkp
-								cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+								rm -rf $location/pottingshed/composer.lock.bkp
+								cp $HOME/.composer/composer.lock $location/pottingshed/composer.lock.bkp
 							else
 								cecho "Composer Lockfile backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+							cp $HOME/.composer/composer.lock $location/pottingshed/composer.lock.bkp
 						fi
 					fi
 					cecho "Successfully backed all Composer packages." $green
@@ -1552,36 +1539,36 @@ case $choice in
 				step "Backing up Ruby gems before update..."
                 if [[ -f $HOME/Gemfile ]];
                 then
-					if [[ -f $location/storage/Gemfile.bkp ]];
+					if [[ -f $location/pottingshed/Gemfile.bkp ]];
 					then
 						read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
 						if [[ $newGemfile =~ ^([yY])$ ]];
 						then
-							rm -rf $location/storage/Gemfile.bkp $location/storage/Gemfile.lock.bkp
-							cp $HOME/Gemfile $location/storage/Gemfile.bkp
-                    		cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+							rm -rf $location/pottingshed/Gemfile.bkp $location/pottingshed/Gemfile.lock.bkp
+							cp $HOME/Gemfile $location/pottingshed/Gemfile.bkp
+                    		cp $HOME/Gemfile.lock $location/pottingshed/Gemfile.lock.bkp
 						else
 							cecho "Gemfile backup already exists. Skipping..." $dim
 							printf "\n"
 						fi
 					else
-                    	cp $HOME/Gemfile $location/storage/Gemfile.bkp
-                    	cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+                    	cp $HOME/Gemfile $location/pottingshed/Gemfile.bkp
+                    	cp $HOME/Gemfile.lock $location/pottingshed/Gemfile.lock.bkp
 					fi
                 else
-					if [[ -f $location/storage/gems.bkp ]];
+					if [[ -f $location/pottingshed/gems.bkp ]];
 					then
 						read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
 						if [[ $newGemfile =~ ^([yY])$ ]];
 						then
-							rm -rf $location/storage/gems.bkp
-							gem list --no-versions >> $location/storage/gems.bkp
+							rm -rf $location/pottingshed/gems.bkp
+							gem list --no-versions >> $location/pottingshed/gems.bkp
 						else
 							cecho "Gemfile backup already exists. Skipping..." $dim
 							printf "\n"
 						fi
 					else
-                    	gem list --no-versions >> $location/storage/gems.bkp
+                    	gem list --no-versions >> $location/pottingshed/gems.bkp
 					fi
                 fi
 				cecho "Successfully backed up Ruby gems." $green
@@ -1615,36 +1602,36 @@ case $choice in
 				step "Backing up Ruby gems before update..."
                 if [[ -f $HOME/Gemfile ]];
                 then
-					if [[ -f $location/storage/Gemfile.bkp ]];
+					if [[ -f $location/pottingshed/Gemfile.bkp ]];
 					then
 						read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
 						if [[ $newGemfile =~ ^([yY])$ ]];
 						then
-							rm -rf $location/storage/Gemfile.bkp $location/storage/Gemfile.lock.bkp
-							cp $HOME/Gemfile $location/storage/Gemfile.bkp
-                    		cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+							rm -rf $location/pottingshed/Gemfile.bkp $location/pottingshed/Gemfile.lock.bkp
+							cp $HOME/Gemfile $location/pottingshed/Gemfile.bkp
+                    		cp $HOME/Gemfile.lock $location/pottingshed/Gemfile.lock.bkp
 						else
 							cecho "Gemfile backup already exists. Skipping..." $dim
 							printf "\n"
 						fi
 					else
-                    	cp $HOME/Gemfile $location/storage/Gemfile.bkp
-                    	cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+                    	cp $HOME/Gemfile $location/pottingshed/Gemfile.bkp
+                    	cp $HOME/Gemfile.lock $location/pottingshed/Gemfile.lock.bkp
 					fi
                 else
-					if [[ -f $location/storage/gems.bkp ]];
+					if [[ -f $location/pottingshed/gems.bkp ]];
 					then
 						read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
 						if [[ $newGemfile =~ ^([yY])$ ]];
 						then
-							rm -rf $location/storage/gems.bkp
-							gem list --no-versions >> $location/storage/gems.bkp
+							rm -rf $location/pottingshed/gems.bkp
+							gem list --no-versions >> $location/pottingshed/gems.bkp
 						else
 							cecho "Gemfile backup already exists. Skipping..." $dim
 							printf "\n"
 						fi
 					else
-                    	gem list --no-versions >> $location/storage/gems.bkp
+                    	gem list --no-versions >> $location/pottingshed/gems.bkp
 					fi
                 fi
 				cecho "Successfully backed up Ruby gems." $green
@@ -1673,36 +1660,36 @@ case $choice in
                     step "Backing up WP-CLI packages before update..."
 					if [[ -f $HOME/.wp-cli/packages/composer.json ]];
 					then
-						if [[ -f $location/storage/wp-composer.json.bkp ]];
+						if [[ -f $location/pottingshed/wp-composer.json.bkp ]];
 						then
 							read -p "There is a current WP-CLI backup. Would you like to overwrite it? Y/n " $newWpComposer
 							if [[ $newWpComposer =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/composer.json.bkp
-								cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+								rm -rf $location/pottingshed/composer.json.bkp
+								cp $HOME/.wp-cli/packages/composer.json $location/pottingshed/wp-composer.json.bkp
 							else
 								cecho "WP-CLI backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+							cp $HOME/.wp-cli/packages/composer.json $location/pottingshed/wp-composer.json.bkp
 						fi
 					fi
 					if [[ -f $HOME/.wp-cli/packages/composer.lock ]];
 					then
-						if [[ -f $location/storage/wp-composer.lock.bkp ]];
+						if [[ -f $location/pottingshed/wp-composer.lock.bkp ]];
 						then
 							read -p "There is a current WP-CLI Lockfile backup. Would you like to overwrite it? Y/n " $newWpComposerLock
 							if [[ $newWpComposerLock =~ ^([yY])$ ]];
 							then
-								rm -rf $location/storage/wp-composer.lock.bkp
-								cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+								rm -rf $location/pottingshed/wp-composer.lock.bkp
+								cp $HOME/.wp-cli/packages/composer.lock $location/pottingshed/wp-composer.lock.bkp
 							else
 								cecho "WP-CLI Lockfile backup already exists. Skipping..." $dim
 								printf "\n"
 							fi
 						else
-							cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+							cp $HOME/.wp-cli/packages/composer.lock $location/pottingshed/wp-composer.lock.bkp
 						fi
 					fi
                     wp cli update
@@ -1749,7 +1736,7 @@ case $choice in
 			fi
 			if [[ -f $HOME/Brewfile.lock.json ]];
 			then
-				cp $HOME/Brewfile.lock.json $location/storage/Brewfile.lock.json.bkp
+				cp $HOME/Brewfile.lock.json $location/pottingshed/Brewfile.lock.json.bkp
 			fi
 		fi
 
@@ -1761,36 +1748,36 @@ case $choice in
 			step "Backing up Ruby gems..."
 			if [[ -f $HOME/Gemfile ]];
 			then
-				if [[ -f $location/storage/Gemfile.bkp ]];
+				if [[ -f $location/pottingshed/Gemfile.bkp ]];
 				then
 					read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
 					if [[ $newGemfile =~ ^([yY])$ ]];
 					then
-						rm -rf $location/storage/Gemfile.bkp $location/storage/Gemfile.lock.bkp
-						cp $HOME/Gemfile $location/storage/Gemfile.bkp
-						cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+						rm -rf $location/pottingshed/Gemfile.bkp $location/pottingshed/Gemfile.lock.bkp
+						cp $HOME/Gemfile $location/pottingshed/Gemfile.bkp
+						cp $HOME/Gemfile.lock $location/pottingshed/Gemfile.lock.bkp
 					else
 						cecho "Gemfile backup already exists. Skipping..." $dim
 						printf "\n"
 					fi
 				else
-					cp $HOME/Gemfile $location/storage/Gemfile.bkp
-					cp $HOME/Gemfile.lock $location/storage/Gemfile.lock.bkp
+					cp $HOME/Gemfile $location/pottingshed/Gemfile.bkp
+					cp $HOME/Gemfile.lock $location/pottingshed/Gemfile.lock.bkp
 				fi
 			else
-				if [[ -f $location/storage/gems.bkp ]];
+				if [[ -f $location/pottingshed/gems.bkp ]];
 				then
 					read -p "There is a current Gemfile backup. Would you like to overwrite it? Y/n " $newGemfile
 					if [[ $newGemfile =~ ^([yY])$ ]];
 					then
-						rm -rf $location/storage/gems.bkp
-						gem list --no-versions >> $location/storage/gems.bkp
+						rm -rf $location/pottingshed/gems.bkp
+						gem list --no-versions >> $location/pottingshed/gems.bkp
 					else
 						cecho "Gemfile backup already exists. Skipping..." $dim
 						printf "\n"
 					fi
 				else
-					gem list --no-versions >> $location/storage/gems.bkp
+					gem list --no-versions >> $location/pottingshed/gems.bkp
 				fi
 			fi
 			cecho "Successfully backed up Ruby gems." $green
@@ -1803,19 +1790,19 @@ case $choice in
 		if [[ ! "$(npm -v)" ]]; then
 			cecho "Unable to backup NPM modules." $red
 		else
-			if [[ -f $location/storage/npm.bkp ]];
+			if [[ -f $location/pottingshed/npm.bkp ]];
             then
                 read -p "There is a current NPM backup. Would you like to overwrite it? Y/n " $newNPM
                 if [[ $newNPM =~ ^([yY])$ ]];
                 then
-                    rm -rf $location/storage/npm.bkp
-                    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                    rm -rf $location/pottingshed/npm.bkp
+                    npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/pottingshed/npm.bkp
                 else
                     cecho "NPM backup already exists. Skipping..." $dim
                     printf "\n"
                 fi
             else
-                npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/storage/npm.bkp
+                npm list --global --parseable --depth=0 | sed '1d' | awk '{gsub(/\/.*\//,"",$1); print}' >> $location/pottingshed/npm.bkp
             fi
             cecho "NPM packages successfully updated." $green
             printf "\n"
@@ -1828,36 +1815,36 @@ case $choice in
 		else
 			if [[ -f $HOME/.composer/composer.json ]];
 			then
-				if [[ -f $location/storage/composer.json.bkp ]];
+				if [[ -f $location/pottingshed/composer.json.bkp ]];
 				then
 					read -p "There is a current Composer backup. Would you like to overwrite it? Y/n " $newComposer
 					if [[ $newComposer =~ ^([yY])$ ]];
 					then
-						rm -rf $location/storage/composer.json.bkp
-						cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+						rm -rf $location/pottingshed/composer.json.bkp
+						cp $HOME/.composer/composer.json $location/pottingshed/composer.json.bkp
 					else
 						cecho "Composer backup already exists. Skipping..." $dim
 						printf "\n"
 					fi
 				else
-					cp $HOME/.composer/composer.json $location/storage/composer.json.bkp
+					cp $HOME/.composer/composer.json $location/pottingshed/composer.json.bkp
 				fi
 			fi
 			if [[ -f $HOME/.composer/composer.lock ]];
 			then
-				if [[ -f $location/storage/composer.lock.bkp ]];
+				if [[ -f $location/pottingshed/composer.lock.bkp ]];
 				then
 					read -p "There is a current Composer Lockfile backup. Would you like to overwrite it? Y/n " $newComposerLock
 					if [[ $newComposerLock =~ ^([yY])$ ]];
 					then
-						rm -rf $location/storage/composer.lock.bkp
-						cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+						rm -rf $location/pottingshed/composer.lock.bkp
+						cp $HOME/.composer/composer.lock $location/pottingshed/composer.lock.bkp
 					else
 						cecho "Composer Lockfile backup already exists. Skipping..." $dim
 						printf "\n"
 					fi
 				else
-					cp $HOME/.composer/composer.lock $location/storage/composer.lock.bkp
+					cp $HOME/.composer/composer.lock $location/pottingshed/composer.lock.bkp
 				fi
 			fi
 			cecho "Successfully backed all Composer packages." $green
@@ -1870,36 +1857,36 @@ case $choice in
 		then
 			if [[ -f $HOME/.wp-cli/packages/composer.json ]];
 			then
-				if [[ -f $location/storage/wp-composer.json.bkp ]];
+				if [[ -f $location/pottingshed/wp-composer.json.bkp ]];
 				then
 					read -p "There is a current WP-CLI backup. Would you like to overwrite it? Y/n " $newWpComposer
 					if [[ $newWpComposer =~ ^([yY])$ ]];
 					then
-						rm -rf $location/storage/composer.json.bkp
-						cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+						rm -rf $location/pottingshed/composer.json.bkp
+						cp $HOME/.wp-cli/packages/composer.json $location/pottingshed/wp-composer.json.bkp
 					else
 						cecho "WP-CLI backup already exists. Skipping..." $dim
 						printf "\n"
 					fi
 				else
-					cp $HOME/.wp-cli/packages/composer.json $location/storage/wp-composer.json.bkp
+					cp $HOME/.wp-cli/packages/composer.json $location/pottingshed/wp-composer.json.bkp
 				fi
 			fi
 			if [[ -f $HOME/.wp-cli/packages/composer.lock ]];
 			then
-				if [[ -f $location/storage/wp-composer.lock.bkp ]];
+				if [[ -f $location/pottingshed/wp-composer.lock.bkp ]];
 				then
 					read -p "There is a current WP-CLI Lockfile backup. Would you like to overwrite it? Y/n " $newWpComposerLock
 					if [[ $newWpComposerLock =~ ^([yY])$ ]];
 					then
-						rm -rf $location/storage/wp-composer.lock.bkp
-						cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+						rm -rf $location/pottingshed/wp-composer.lock.bkp
+						cp $HOME/.wp-cli/packages/composer.lock $location/pottingshed/wp-composer.lock.bkp
 					else
 						cecho "WP-CLI Lockfile backup already exists. Skipping..." $dim
 						printf "\n"
 					fi
 				else
-					cp $HOME/.wp-cli/packages/composer.lock $location/storage/wp-composer.lock.bkp
+					cp $HOME/.wp-cli/packages/composer.lock $location/pottingshed/wp-composer.lock.bkp
 				fi
 			fi
 			cecho "All WP-CLI packages successfully backed up." $green
@@ -1931,7 +1918,7 @@ case $choice in
 		else
 			step "Restoring Homebrew..."
 
-			if [[ -f $location/storage/Brewfile.bkp ]];
+			if [[ -f $location/pottingshed/Brewfile.bkp ]];
 			then
 				if [[ ! -d "$location/pottingshed/brew" ]]; then
 					mkdir "$location/pottingshed/brew"
@@ -1939,22 +1926,22 @@ case $choice in
 
 				step "Restoring from Brewfile.bkp..."
 
-				if [[ -f "$location/storage/Brewfile.lock.json.bkp" ]]; then
+				if [[ -f "$location/pottingshed/Brewfile.lock.json.bkp" ]]; then
 					read -p "Would you like to restore Brewfile.lock.json? Y/n" restoreBrewLock
 
 					if [[ $restoreBrewLock =~ ^([yY])$ ]];
 					then
-						mv $location/storage/Brewfile.lock.json.bkp $HOME/Brewfile.lock.json
-						cp $location/storage/Brewfile.bkp $HOME/Brewfile
+						mv $location/pottingshed/Brewfile.lock.json.bkp $HOME/Brewfile.lock.json
+						cp $location/pottingshed/Brewfile.bkp $HOME/Brewfile
 						cd $HOME
 						brew bundle
 						cd $location
 					fi
 				fi
 
-				if [[ ! -f "$location/storage/Brewfile.lock.json.bkp" ]] || [[ $restoreBrewLock =~ ^([nN])$ ]];
+				if [[ ! -f "$location/pottingshed/Brewfile.lock.json.bkp" ]] || [[ $restoreBrewLock =~ ^([nN])$ ]];
 				then
-					cp $location/storage/Brewfile.bkp $location/pottingshed/brew/Brewfile
+					cp $location/pottingshed/Brewfile.bkp $location/pottingshed/brew/Brewfile
 					cd $location/pottingshed/brew
 					brew bundle
 					cd $location
@@ -1984,10 +1971,10 @@ case $choice in
 			step "Restoring you Ruby gems..."
 			if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
 			then
-				if [[ -f $location/storage/Gemfile ]];
+				if [[ -f $location/pottingshed/Gemfile ]];
 				then
-					cp $location/storage/Gemfile $HOME
-					cp $location/storage/Gemfile.lock $HOME
+					cp $location/pottingshed/Gemfile $HOME
+					cp $location/pottingshed/Gemfile.lock $HOME
 					bundle install --quiet
 					if [[ $internet ]];
 					then
@@ -1999,9 +1986,9 @@ case $choice in
 					cecho "No Gemfile found. Unable to restore Ruby gems." $red
 				fi
 			else
-				if [[ -f $location/storage/gems.bkp ]];
+				if [[ -f $location/pottingshed/gems.bkp ]];
 				then
-					cp $location/storage/gems.bkp $location/pottingshed/gems
+					cp $location/pottingshed/gems.bkp $location/pottingshed/gems
 					cd $location/pottingshed/gems
 					xargs gem unpack < $location/pottingshed/gems.bkp
 
