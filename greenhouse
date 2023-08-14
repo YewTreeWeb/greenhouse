@@ -622,6 +622,7 @@ case $choice in
 		nvm install node
 		nvm install --lts node
 		nvm use --lts
+		nvm alias default --lts
 
         step "Updating NPM..."
         npm i -g npm@latest
