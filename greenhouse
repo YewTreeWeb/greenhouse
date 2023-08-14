@@ -93,16 +93,6 @@ case $choice in
 			sudo chflags norestricted "/usr/local/bin"
 		fi
 
-		# Check if system bin folder exists.
-		if [[ ! -d "$HOME/.bin/" ]]; then
-			sudo mkdir "$HOME/.bin"
-		fi
-
-		# Check if system sbin folder exists.
-		if [[ ! -d "$HOME/.sbin/" ]]; then
-			sudo mkdir "$HOME/.sbin"
-		fi
-
 		# Add website folder.
 		if [[ ! -d "$HOME/Sites/" ]]; then
 			sudo mkdir "$HOME/Sites"
@@ -144,6 +134,19 @@ case $choice in
 			    cecho "Homebrew successfully installed." $green
             fi
 		fi
+
+        # Check the architecture using the arch command
+        if [[ "$(arch)" == "arm64" || "$(arch)" == "i386" ]]; then
+            # Make sure you /op/homebrew/bin exists.
+            if [[ ! -d "/op/homebrew/bin" ]]; then
+                sudo mkdir "/op/homebrew/bin"
+            fi
+            sudo chflags norestricted "/op/homebrew/bin"
+            echo '# Install Homebrew packages in /op/homebrew/bin' >> $HOME/.zshrc
+            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zshrc
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            ln -s /opt/homebrew/bin /usr/local/bin
+        fi
 
 		# Make sure system is running the latest Homebrew
 		printf "Updating Homebrew..."
