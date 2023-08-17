@@ -26,8 +26,8 @@ indent="   "
 internet=false
 env=null
 
-# Save Homebrew’s installed location.
-BREW_PREFIX="$(brew --prefix)"
+# Set BREW_PREFIX to Homebrew's installation directory if available, or an empty string
+BREW_PREFIX="$(command -v brew > /dev/null && brew --prefix || echo '')"
 
 # Get full directory name of this script
 location="$(cd "$(dirname "$0")" && pwd)"
@@ -71,10 +71,8 @@ check_bash_version() {
 
 # Get and display the system's OS.
 get_os() {
-
     local os=""
     local kernelName=""
-
     kernelName="$(uname -s)"
 
     if [ "$kernelName" == "Darwin" ]; then
@@ -86,7 +84,6 @@ get_os() {
     fi
 
     printf "%s" "$os"
-
 }
 
 # Get the current version of the system's OS.
@@ -158,29 +155,28 @@ Host github
 EOF
 }
 
-# If user wants to install NPM packages with Yarn, add global path to shell profile
-install_with_yarn() {
-cat <<EOF >> $shellProfile
-export PATH="$(yarn global bin):$PATH"
-EOF
-}
-
 # Find PHP memory files and change the limit to a higher amount
 fix_php_memory() {
-    local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
-    local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
+    local phpVersionInfo=$(php -v | grep ^PHP)
+    local phpVersion=$(echo "$phpVersionInfo" | cut -d' ' -f2)
+    local phpShortVersion=$(echo "$phpVersion" | rev | cut -c 3- | rev)
 
-    if [[ -d "/usr/local/etc/php/$phpVersion/" ]]; then
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
+    if [[ -d "/usr/local/etc/php/$phpVersion/" || -d "/usr/local/etc/php/$phpShortVersion/" ]]; then
+        find_php_ini="/usr/local/etc/php/$phpVersion/php.ini"
+        find_php_mem_limits_ini="/usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini"
+
+        if [ ! -d "$find_php_ini" ]; then
+            find_php_ini="/usr/local/etc/php/$phpShortVersion/php.ini"
+            find_php_mem_limits_ini="/usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini"
+        fi
+
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" "$find_php_ini"
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" "$find_php_mem_limits_ini"
+
+        brew services restart php
+    else
+        echo "PHP configuration directories not found."
     fi
-
-    if [[ -d "/usr/local/etc/php/$phpShortVersion/" ]]; then
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
-    fi
-
-    brew services restart php
 }
 
 # Install and setup ZSH completions
@@ -197,14 +193,6 @@ chmod go-w "${BREW_PREFIX}/share"
 chmod go-w "/usr/local/share"
 }
 
-# Add Starship to zshrc
-add_starship() {
-cat <<EOT >> $zshRC
-# Starship
-eval "$(starship init zsh)"
-EOT
-}
-
 install_zsh_dependecies() {
     # Clone ZSH dependency repos to `~/.zsh/` directory
     cd $HOME
@@ -212,16 +200,31 @@ install_zsh_dependecies() {
         # Download Oh My ZSH
         step "Installing Oh My ZSH..."
         sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-        if [ $? -eq 0 ]; then
-            cecho "Oh My ZSH installed." $green
+        if [[ -d $HOME/.oh-my-zsh ]]; then
+            cecho "Oh My ZSH successfully installed." $green
+			sudo chown -R $(whoami):admin "$HOME/.oh-my-zsh"
+		else
+			cecho "Failed to install Oh My ZSH" $red
         fi
     else
         cecho "Oh My ZSH already installed. Skipping..." $dim
     fi
 
+	# Install Spaceship command prompt
+	zshTheme="$HOME/.oh-my-zsh/custom/themes"
+	if [[ -f $zshTheme/spaceship-prompt/spaceship.zsh-theme ]]; then
+		cecho "Spaceship already installed. Skipping..." $dim
+	else
+		sudo chown -R $(whoami):admin "$HOME/.oh-my-zsh/custom"
+		sudo chflags norestricted $zshTheme
+		git clone https://github.com/spaceship-prompt/spaceship-prompt.git "$zshTheme/spaceship-prompt" --depth=1
+		sudo ln -s "$zshTheme/spaceship-prompt/spaceship.zsh-theme" "$zshTheme/spaceship.zsh-theme"
+	fi
+
     # Check if zsh_plugins exists.
     if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
         mkdir "$HOME/.zsh_plugins"
+		sudo chown -R $(whoami):admin "$HOME/.zsh_plugins"
     fi
     cd "$HOME/.zsh_plugins"
 
@@ -287,71 +290,8 @@ install_zsh_dependecies() {
     else
         cecho "Key bindings config already installed. Skipping..." $dim
     fi
-
-    source $shellProfile
     # Go back to $location
     cd $location
-}
-
-# Check if system has an SSL if not create it.
-ssl_setup() {
-	local sslRoot="$HOME/.ssl";
-	local ssl_crt="$sslRoot/server.crt"
-	local ssl_key="$sslRoot/server.key"
-	local b=$(tput bold)
-	local c=$(tput sgr0)
-
-	# Get IP
-	local local_ip=$(ipconfig getifaddr $(route get default | grep interface | awk '{print $2}'))
-
-	# Set SSL domains
-	local domains=(
-		"localhost"
-		"$local_ip"
-	)
-
-	# Create a .ssl directory if it doesn't exist.
-	if [[ ! -d "$HOME/.ssl" ]]; then
-		sudo mkdir $HOME/.ssl
-	fi
-
-	if [[ ! -f $ssl_crt ]]; then
-		printf "\n"
-		cecho "🛑  ${b}Couldn't find a SSL certificate:${c}" $red
-		local make_key=true
-	elif [[ ! $(openssl x509 -noout -text -in $ssl_crt | grep $local_ip) ]]; then
-		printf "\n"
-		cecho "🛑  ${b}Your IP Address has changed:${c}" $red
-		local make_key=true
-	else
-		printf "\n"
-		cecho "✅  ${b}Your IP address is still the same. Skipping SSL setup...${c}" $dim
-	fi
-
-	if [[ $make_key == true ]]; then
-		if test "$(which mkcert)"; then
-			cecho "Generating a new SSL certificate..." $green
-			printf "\n"
-		else
-			cecho "Installing mkcert & nss..." $dim
-			brew install mkcert nss 2>/dev/null
-			cecho "Successfully installed mkcert & nss. Generating a new SSL certificate..." $green
-			printf "\n"
-		fi
-
-		local count=$(( ${#domains[@]} - 1))
-		mkcert ${domains[@]}
-
-		# It appears mkcert bases its filenames off the number of domains passed after the first one.
-		# This script predicts that filename, so it can copy it to the .ssl directory.
-		if [[ $count = 0 ]]; then
-			sudo mv $location/localhost.pem $ssl_crt
-			sudo mv $location/localhost-key.pem $ssl_key
-		else
-			sudo mv $location/localhost+$count.pem $ssl_crt
-			sudo mv $location/localhost+$count-key.pem $ssl_key
-		fi
-	fi
 }
 
 # Add aliases for WP-CLI to .zshrc
@@ -362,7 +302,6 @@ alias wp-update="wp core update && wp core language update"
 alias wp-update --assets="wp plugin update --all && wp theme update --all"
 alias wp-update --all="wp core update && wp plugin update --all && wp theme update --all && wp package --all && wp core language update"
 EOF
-source $shellProfile
 }
 
 # Add VSCode command line tool to .zshrc
@@ -371,7 +310,6 @@ cat <<EOF >> $shellProfile
 # Add Visual Studio Code (code)
 export PATH="\$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
 EOF
-source $shellProfile
 }
 
 # Add a shopify folder and shortcut to .zshrc
@@ -379,29 +317,30 @@ shopfiy_dir_shortcut() {
 # Create folder for Shopify themes
 if [[ ! -d "$HOME/Sites/Shopify" ]]; then
 	sudo mkdir $HOME/Sites/Shopify
+	sudo chown -R $(whoami):admin "$HOME/Sites/Shopify"
 fi
 # Create folder for Shopify Apps
 if [[ ! -d "$HOME/Developer/Shopify" ]]; then
 	sudo mkdir $HOME/Developer/Shopify
+	sudo chown -R $(whoami):admin "$HOME/Developer/Shopify"
 fi
 
-if grep -q 'st' $shellProfile; then
+if grep -q 'shopthemes' $shellProfile; then
 	cecho "Shortcut for Shopify themes directory already exists. Skipping..." $dim
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Shopify themes directory
-alias st='cd $HOME/Sites/Shopify'
+alias shopthemes='cd $HOME/Sites/Shopify'
 EOF
 fi
-if grep -q 'sa' $shellProfile; then
+if grep -q 'shopapps' $shellProfile; then
 	cecho "Shortcut for Shopify apps directory already exists. Skipping..." $dim
 else
 cat <<EOF >> $shellProfile
 # Alias shortcut for Shopify apps directory
-alias sa='cd $HOME/Developer/Shopify'
+alias shopapps='cd $HOME/Developer/Shopify'
 EOF
 fi
-source $shellProfile
 }
 
 # Add a shopify folder and shortcut to .zshrc
@@ -409,6 +348,7 @@ wp_dir_shortcut() {
 # Create folder for WordPress sites
 if [[ ! -d "$HOME/Sites/Wordpress" ]]; then
 	sudo mkdir $HOME/Sites/Wordpress
+	sudo chown -R $(whoami):admin "$HOME/Sites/Wordpress"
 fi
 
 if grep -q 'wordpress' $shellProfile; then
@@ -419,7 +359,6 @@ cat <<EOF >> $shellProfile
 alias wordpress='cd $HOME/Sites/WordPress'
 EOF
 fi
-source $shellProfile
 }
 
 # Add a Laravel folder and shortcut to .zshrc
@@ -427,6 +366,7 @@ laravel_dir_shortcut() {
 # Create folder for Laravel sites
 if [[ ! -d "$HOME/Sites/Laravel" ]]; then
 	sudo mkdir $HOME/Sites/Laravel
+	sudo chown -R $(whoami):admin "$HOME/Sites/Laravel"
 fi
 
 if grep -q 'lara' $shellProfile; then
@@ -437,7 +377,6 @@ cat <<EOF >> $shellProfile
 alias lara='cd $HOME/Sites/Laravel'
 EOF
 fi
-source $shellProfile
 }
 
 # Add a folder and shortcut to .zshrc for static sites
@@ -445,6 +384,7 @@ static_dir_shortcut() {
 # Create folder for static sites
 if [[ ! -d "$HOME/Sites/Static" ]]; then
 	sudo mkdir $HOME/Sites/Static
+	sudo chown -R $(whoami):admin "$HOME/Sites/Static"
 fi
 
 if grep -q 'static' $shellProfile; then
@@ -455,7 +395,6 @@ cat <<EOF >> $shellProfile
 alias static='cd $HOME/Sites/Static'
 EOF
 fi
-source $shellProfile
 }
 
 # Add a Laravel folder and shortcut to .zshrc
@@ -463,6 +402,7 @@ jekyll_dir_shortcut() {
 # Create folder for Jekyll sites
 if [[ ! -d "$HOME/Sites/Jekyll" ]]; then
 	sudo mkdir $HOME/Sites/Jekyll
+	sudo chown -R $(whoami):admin "$HOME/Sites/Jekyll"
 fi
 
 if grep -q 'hyde' $shellProfile; then
@@ -473,5 +413,4 @@ cat <<EOF >> $shellProfile
 alias hyde='cd $HOME/Sites/Jekyll'
 EOF
 fi
-source $shellProfile
 }

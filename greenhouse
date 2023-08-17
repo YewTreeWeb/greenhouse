@@ -93,15 +93,26 @@ case $choice in
 			sudo chflags norestricted "/usr/local/bin"
 		fi
 
+		# Make sure you user/local/sbin exists.
+		if [[ ! -d "/usr/local/sbin" ]]; then
+			sudo mkdir "/usr/local/sbin"
+			sudo chflags norestricted "/usr/local/sbin"
+		fi
+
 		# Add website folder.
 		if [[ ! -d "$HOME/Sites/" ]]; then
 			sudo mkdir "$HOME/Sites"
+			sudo chown -R $(whoami):admin "$HOME/Sites"
 		fi
 
 		# Add developer folder.
 		if [[ ! -d "$HOME/Developer/" ]]; then
 			sudo mkdir "$HOME/Developer"
+			sudo chown -R $(whoami):admin "$HOME/Developer"
 		fi
+
+		# Change Application permission
+		sudo chflags norestricted "/Applications"
 
 		# Check if xcode is installed. If not install it.
 		if xcode-select -p &> /dev/null; then
@@ -132,11 +143,25 @@ case $choice in
             done
             if [ $? -eq 0 ]; then
 			    cecho "Homebrew successfully installed." $green
+				step "Installing wget for future use..."
+				brew install wget
+				# Wait for the installation to finish
+				while ps | grep -q "[b]rew install wget"; do
+					sleep 5
+				done
+				if brew list wget; then
+					cecho "Successfully installed wget." $green
+				else
+					cecho "Failed to install wget." $red
+				fi
+				printf "\n\n"
             fi
 		fi
 
         # Check the architecture using the arch command
-        if [[ "$(arch)" == "arm64" || "$(arch)" == "i386" ]]; then
+		# Get the process's interpreter
+		interpreter=$(ps -p $$ -o comm=)
+        if [[ "$(arch)" == "arm64" || "$interpreter" == *"Rosetta"* ]]; then
             # Make sure you /op/homebrew/bin exists.
             if [[ ! -d "/op/homebrew/bin" ]]; then
                 sudo mkdir "/op/homebrew/bin"
@@ -145,7 +170,7 @@ case $choice in
             echo '# Install Homebrew packages in /op/homebrew/bin' >> $HOME/.zshrc
             echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zshrc
             eval "$(/opt/homebrew/bin/brew shellenv)"
-            ln -s /opt/homebrew/bin /usr/local/bin
+            sudo ln -s /opt/homebrew/bin /usr/local/bin
         fi
 
 		# Make sure system is running the latest Homebrew
@@ -153,64 +178,12 @@ case $choice in
 		brew update
         printf "\n"
 
-		# Installing shell enviornment.
-		step "Setting up the Shell environment..."
-		printf "\n\n"
-
-        # Check if Zsh is installed through Homebrew
-        if brew list zsh &> /dev/null; then
-            cecho "Homebrew ZSH already installed. Updating..." $dim
-            brew upgrade zsh
-            if [ $? -eq 0 ]; then
-                cecho "Updated ZSH successfully." $green
-            fi
-            printf '\n'
-        else
-            brew install zsh
-            # Switch to using brew-installed zsh as default shell
-            if ! fgrep -q "${BREW_PREFIX}/bin/zsh" /etc/shells; then
-                echo "${BREW_PREFIX}/bin/zsh" | sudo tee -a /etc/shells;
-                chsh -s "${BREW_PREFIX}/bin/zsh";
-            fi
-            if [ $? -eq 0 ]; then
-                cecho "Shell environment changed to ZSH." $green
-            else
-                cecho "Failed to install ZSH via Homebrew." $red
-            fi
-            printf '\n'
-        fi
-
-        ##############################
-		# Use Fig #
 		##############################
-        heading "Use Fig"
-        # Check if Fig is installed
-        if command -v fig &> /dev/null; then
-            cecho "Fig already installed. Skipping..." $dim
-        else
-            # Check if ZSH is installed
-            if command -v zsh &> /dev/null; then
-                # Remove system generated .zshrc and use Greenhouse's zsh file
-                # step "Replacing system .zshrc with Greenhouse's .zshrc"
-                if [ -f $HOME/.zshrc ]; then
-                    rm -rf $HOME/.zshrc
-                fi
-                read -p "Would you like to have your system managed by Fig? y/n/both `cecho $'\nhint: Choose both if you want manual control as well as Fig control' $dim``print $'\n\n> '`" useFig
-                if [[ $useFig =~ ^([bothBothBOTH])$ || $useFig =~ ^([yY])$ ]]; then
-                    brew install fig --cask
-                    install_zsh_dependecies
-                fi
-                if [[ $useFig =~ ^([bothBothBOTH])$ ]]; then
-                    cp $location/seeds/profile/.zshrc-w-fig $HOME/.zshrc
-                elif [[ $useFig =~ ^([yY])$ ]]; then
-                    cp $location/seeds/profile/.figZshrc $HOME/.zshrc
-                else
-                    cp $location/seeds/profile/.zshrc $HOME/.zshrc
-                fi
-            else
-                cecho "ZSH is not installed. Fig setup aborted" $red
-            fi
-        fi
+		# Installing zsh environment #
+		##############################
+
+		chmod +x propagation-station/setup/shell.zsh
+		zsh propagation-station/setup/shell.zsh
 
 		##############################
 		# Add dotfiles #
@@ -248,642 +221,65 @@ case $choice in
 		# See: https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/
 		#############################################
 
-		heading "Creating system SSH key"
-
-		# Check if ssh folder exists.
-		if [[ ! -d "$HOME/.ssh/" ]]; then
-			mkdir $HOME/.ssh
-		fi
-		if [ -f $HOME/.ssh/id_rsa ]; then
-			cecho "SSH key 'id_rsa' found in ~/.ssh directory. Skipping... " $dim
-			printf "\n"
-		else
-			cd $HOME/.ssh
-
-			step "Creating key and adding to agent."
-			read -p 'Input email for ssh key: ' sshEmail
-			ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
-			eval "$(ssh-agent -s)"
-			cd $location
-		fi
-
-		# If the OS version is equal to or higher than Sierra then ssh key will not be able to be saved to keychain.
-		step "Adding SSH key to keychain..."
-		ssh-add --apple-use-keychain $HOME/.ssh/id_rsa
-        echo "# ssh keys" >> $HOME/.zshrc
-        echo "ssh-add $HOME/.ssh/id_rsa" >> $HOME/.zshrc
-		cecho "If you are running macOS Sierra or lower you can add the ssh key to your keygen" $dim
-		cecho "To add to keygen run ${bold}ssh-add -K $HOME/.ssh/id_rsa${normal}" $dim
-		printf "\n"
-
-		if [[ -e "$HOME/.ssh/config" ]]; then
-            cecho "An SSH config file already exists. Skipping... " $dim
-		else
-			step "Creating a new SSH config file with default settings..."
-			create_ssh_config
-            if [ $? -eq 0 ]; then
-			    cecho "Successfully created SSH config file." $green
-            else
-                cecho "Unable to create SSH config file." $red
-            fi
-		fi
+		chmod +x propagation-station/setup/ssh.zsh
+		zsh propagation-station/setup/ssh.zsh
 
         ##############################
 		# Add git user config data #
 		##############################
 
-		heading "Creating gitconfig and adding user info to file..."
-
-        step "Creating gitconfig..."
-		if [[ ! -f "$HOME/.gitconfig" ]];
-		then
-			touch $HOME/.gitconfig
-		else
-			cecho "A gitconfig already exists. Skipping..." $dim
-		fi
-
-        step "Configuring gitconfig..."
-        read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
-
-        read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
-
-        read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``print $'\n> '` " gitBranchName
-
-        read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``print $'\n> '``cecho $'\nhint: Default will be 'pull.rebase false'. You can renamed via this command: git config --global <pull-type> at any time.' $dim``print $'\n> '` " gitPullRequest
-
-        step "Adding Git config data..."
-        git config --global user.name "${gitUser:-$USER}"
-        git config --global user.email "${gitEmail:-$sshEmail}"
-        git config --global init.defaultBranch ${gitBranchName:-'master'}
-        git config --global ${gitPullRequest:-'pull.rebase false'}
-
-        cecho "Git user data has been successfully added to .gitconfig" $green
+		chmod +x propagation-station/setup/gitconfig.zsh
+		zsh propagation-station/setup/gitconfig.zsh
 
 		##############################
 		# Install Brews #
 		##############################
 
-		heading "Installing Homebrew formulaes and casks"
-
-		if [[ -e $location/seeds/Brewfile ]]; then
-            if command -v brew &> /dev/null; then
-				step "Installing Homebrew packages..."
-				# Check if user local Applications folder exists.
-				if [[ ! -d "$HOME/Applications" ]]; then
-                    read -p "Would you like to install casks to a local Applications directory? Y/n " haveLocalApps
-                    if [[ $haveLocalApps =~ ^([yY])$ ]]; then
-					    mkdir "$HOME/Applications"
-                        echo "# Homebrew install cask location" >> $HOME/.zshrc
-                        echo "export HOMEBREW_CASK_OPTS=\"--appdir=~/Applications\"" >> $HOME/.zshrc
-                    fi
-				fi
-
-				# Create temporary folder
-				if [[ -d "$HOME/Applications" ]]; then
-					# Move into pottingshed/apps
-					if [[ ! -d "$location/pottingshed" ]]; then
-						mkdir "$location/pottingshed"
-					fi
-					cd "$location/pottingshed"
-
-					if [[ ! -d "$location/pottingshed/brew" ]]; then
-						mkdir "$location/pottingshed/brew"
-					fi
-					cd "$location/pottingshed/brew"
-
-					printf '## Set global configuration arguments\ncask_args appdir: "~/Applications"\n\n' | cat - $location/seeds/Brewfile > $location/pottingshed/brew/temp && mv $location/pottingshed/brew/temp $location/pottingshed/brew/Brewfile
-				fi
-
-				# Copy Greenhouse Brewfile to $HOME
-				if [[ ! -d "$HOME/Applications" ]]; then
-					cp $location/seeds/Brewfile $HOME
-				else
-					cp $location/pottingshed/brew/Brewfile $HOME
-				fi
-
-				# Install brew packages
-				cd $HOME
-				# brew bundle
-                brew bundle
-
-				step "Updating MongoDB Binary"
-				brew unlink mongodb
-				brew link --overwrite mongodb-community
-
-                # Install IconJar
-                read -p "Would you like to install IconJar? y/N" installIJ
-                if [[ $installIJ =~ ^([yY])$ ]]; then
-                     # Install iconjar and wait for installation
-                    if ! brew list --cask iconjar &> /dev/null; then
-                        cecho "Installing iconjar via Homebrew..."
-                        brew install --cask iconjar
-
-                        # Wait for the installation to finish
-                        while ps | grep -q "[b]rew install --cask iconjar"; do
-                            sleep 5
-                        done
-
-                        if brew list --cask iconjar &> /dev/null; then
-                            cecho "iconjar installed successfully via Homebrew." $green
-                        else
-                            cecho "Failed to install iconjar via Homebrew." $red
-                        fi
-                    else
-                        cecho "iconjar is already installed via Homebrew. Skipping..." $dim
-                    fi
-                else
-                    cecho "IconJar installation aborted. Skipping..." $dim
-                fi
-
-                # Install Shopify
-                cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
-                printf "\n"
-                read -p "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit/n" whichShopifyCli
-
-                if [[ $whichShopifyCli =~ ^([cli])$ ]]; then
-                    brew install shopify-cli
-                    if command -v shopify-cli &> /dev/null; then
-                        cecho "Shopify CLI successfully installed" $green
-                    else
-                        cecho "Failed to install Shopify CLI via Homebrew" $red
-                    fi
-                    printf "\n"
-                elif [[ $whichShopifyCli =~ ^([themekit])$ ]]; then
-                    brew install themekit
-                    if command -v themekit &> /dev/null; then
-                        cecho "Theme Kit successfully installed" $green
-                    else
-                        cecho "Failed to install Theme Kit via Homebrew" $red
-                    fi
-                    printf "\n"
-                elif [[ $whichShopifyCli =~ ^([both])$ ]]; then
-                    brew install shopify-cli themekit
-                    if command -v shopify-cli  &> /dev/null && command -v themekit &> /dev/null; then
-                        cecho "Shopify CLI and Theme Kit successfully installed" $green
-                    else
-                        cecho "Failed to install both Shopify CLI and Theme Kit via Homebrew" $red
-                    fi
-                    printf "\n"
-                else
-                    cecho "Shopify CLI and Theme Kit installation aborted. Skipping..." $dim
-                fi
-
-                # Run Brew doctor
-                brew doctor
-
-				# Run a Homebrew cleanup.
-				step "Cleaning up Homebrew..."
-				brew cleanup
-				cd $location
-				if [[ -d "$HOME/Applications" ]]; then
-                    # Remove pottingshed/brew to save space
-					rm -rf $location/pottingshed/brew
-				fi
-			else
-				cecho "Homebrew may not be installed or you may not have internet. Please try again." $red
-			fi
-		fi
+		chmod +x propagation-station/setup/brew.zsh
+		zsh propagation-station/setup/brew.zsh
 
         #############################################
 		# Add ssh-key to GitHub via api
 		# Reference new-computer github account
 		#############################################
 
-        heading "Adding ssh-key to GitHub (via api)..."
-        read -p "Would you like to add your ssh key to Github? Y/n " useGithub
-
-        if [[ $useGithub =~ ^([yY])$ ]]; then
-            cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
-            cecho "If you don't have one, create it here: https://github.com/settings/tokens/new" $yellow
-            retries=3
-            SSH_KEY=`cat $HOME/.ssh/id_rsa.pub`
-
-            for ((i=0; i<retries; i++)); do
-                read -p 'GitHub username: ' ghusername
-                read -p 'Machine name: ' ghtitle
-                read -sp 'GitHub personal token: ' ghtoken
-
-                gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
-
-                if (( $gh_status_code -eq == 201)); then
-                    cecho "GitHub ssh key added successfully!" $green
-                    break
-                else
-                    cecho "${bold}Something went wrong${normal}. Enter your credentials and try again..." $yellow
-                    echo -n "Status code returned: "
-                    echo $gh_status_code
-                fi
-            done
-
-            [[ $retries -eq i ]] && cecho "Adding ssh-key to GitHub failed! Try again later." $red
-            printf "\n"
-
-            # Add Github to ssh config file
-            add_github_host
-            # Authenticate with Github
-            gh auth login
-        else
-            cecho "Adding ssh-key to GitHub aborted. Skipping... " $dim
-        fi
+		chmod +x propagation-station/setup/github.zsh
+		zsh propagation-station/setup/github.zsh
 
         #############################################
 		# Install Alfred or Raycast
 		#############################################
 
-        heading "Install Alfred or Raycast"
-        read -p "Would you like to install either Alfred or Raycast? alfred/raycast" installAR
-
-        if [[ installAR == 'alfred' ]]; then
-            if brew list --cask alfred; then
-                cecho "Alfred is already installed via Homebrew. Skipping..." $dim
-            else
-                brew install --cask alfred
-                 # Wait for the installation to finish
-                while ps | grep -q "[b]rew install alfred"; do
-                    sleep 5
-                done
-
-                if brew list --cask alfred; then
-                    cecho "Successfully installed Alfred." $green
-                else
-                    cecho "Failed to install Alfred." $red
-                fi
-            fi
-        else
-            if brew list --cask raycast &> /dev/null; then
-                cecho "Raycast is already installed via Homebrew. Skipping..." $dim
-            else
-                brew install --cask raycast
-                 # Wait for the installation to finish
-                while ps | grep -q "[b]rew install raycast"; do
-                    sleep 5
-                done
-
-                if brew list --cask raycast; then
-                    cecho "Successfully installed Raycast." $green
-                else
-                    cecho "Failed to install Raycast." $red
-                fi
-            fi
-        fi
+        chmod +x propagation-station/setup/alfred-raycast.zsh
+		zsh propagation-station/setup/alfred-raycast.zsh
 
 		###############################################################################
 		# Install Apps from the web #
 		###############################################################################
 
-		heading "Installing apps from the web"
-
-		# Check if Composer is already installed.
-		# Check if restore folder exists
-        # Move into pottingshed/apps
-		if [[ ! -d "$location/pottingshed" ]]; then
-			mkdir "$location/pottingshed"
-		fi
-        cd "$location/pottingshed"
-
-		if [[ ! -d "$location/pottingshed/apps" ]]; then
-			mkdir "$location/pottingshed/apps"
-		fi
-		cd "$location/pottingshed/apps"
-
-		if [[ ! -f "$HOME/Applications/Popcorn-Time.app" ]];
-		then
-            read -p "Would you like to install Popcorn Time? Y/n" popcorn
-            if [[ $popcorn =~ ^([yY])$ ]];
-			then
-			    step "Downloading PopcornTime..."
-                wget https://get.popcorntime.sh/build/Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
-                unzip Popcorn-Time-0.3.10-Mac.zip 2> /dev/null
-                sudo mv Popcorn-Time.app $HOME/Applications
-                cecho "Successfully downloaded and installed PopcornTime." $green
-			else
-				cecho "Popcorn Time installation aborted. Skipping..." $dim
-			fi
-		else
-			cecho "PopcornTime already installed. Skipping..." $dim
-		fi
-
-		if [[ ! -f "/Applications/Amphetamine Enhancer.app" ]];
-		then
-            read -p "Would you like to download Amphetamine Enhancer? Y/n" amphetamine
-            if [[ $amphetamine =~ ^([yY])$ ]];
-			then
-			    step "Downloading File..."
-                cd $HOME/Downloads
-                wget https://github.com/x74353/Amphetamine-Enhancer/raw/master/Releases/Current/Amphetamine%20Enhancer.dmg 2> /dev/null
-                cd $location/pottingshed/apps
-                cecho "Downloaded Amphetamine Enhancer into Downloads folder" $green
-			else
-				cecho "Amphetamine Enhancer download aborted. Skipping..." $dim
-			fi
-		else
-			cecho "Amphetamine Enhancer already downloaded. Skipping..." $dim
-		fi
-
-		if [[ ! -f "/Applications/FileZilla.app" ]];
-		then
-            read -p "Would you like to download FileZilla? Y/n" filezilla
-            if [[ $filezilla =~ ^([yY])$ ]];
-			then
-			    step "Downloading File..."
-                cd $HOME/Downloads
-                wget https://download.filezilla-project.org/client/FileZilla_3.46.3_macosx-x86_sponsored-setup.dmg 2> /dev/null
-                cd $location/pottingshed/apps
-                cecho "Downloaded FileZilla into Downloads folder" $green
-			else
-				cecho "FileZilla download aborted. Skipping..." $dim
-			fi
-		else
-			cecho "FileZilla already downloaded. Skipping..." $dim
-		fi
-
-		# Come out of pottingshed.
-		cd $location
-
-		# Remove pottingshed/apps to save space
-		rm -rf $location/pottingshed/apps/
+		chmod +x propagation-station/setup/web.zsh
+		zsh propagation-station/setup/web.zsh
 
 		###############################################################################
 		# Install Node with NVM & NPM packages #
 		###############################################################################
 
-		heading "Node with NVM & NPM packages"
-
-		# Install NVM to manage Node.
-		step "Configuring NVM..."
-		if [[ ! -f "$HOME/.nvmrc" ]]; then
-			cp $location/seeds/.nvmrc $HOME
-		fi
-
-		cecho "NVM configured." $green
-        printf "\n\n"
-
-		step "Installing latest Node & LTS Node..."
-		nvm install node
-		nvm install --lts node
-		nvm use --lts
-		nvm alias default --lts
-
-        step "Updating NPM..."
-        npm i -g npm@latest
-
-        if command -v node &> /dev/null; then
-            cecho "Successfully installed NVM, latest Node and LTS version\n" $green
-            cecho "To use the latest version of Node as default run ${bold}nvm alias default node${normal} or ${bold}nvm alias default stable${normal}\n" $dim
-        else
-            cecho "Failed to installed NVM, latest Node and LTS version\n" $red
-        fi
-
-		step "Installing packages..."
-		read -p "Would you like to use yarn, pnpm or npm? y/p/n" installPkg
-
-		if [[ -e $location/seeds/npm ]]; then
-			if [[ $installPkg =~ ^([yY])$ ]]; then
-				if brew list yarn &> /dev/null; then
-					install_with_yarn
-                    step "Setting Yarn to latest version..."
-                    yarn set version berry
-                    brew update yarn
-					xargs yarn global add < $location/seeds/npm
-				else
-					cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
-                    printf "\n"
-					xargs npm i -g < $location/seeds/npm
-				fi
-			elif [[ $installPkg =~ ^([pP])$ ]]; then
-				if brew list pnpm &> /dev/null; then
-                    step "Updating pnpm to latest version..."
-                    brew update pnpm
-					xargs pnpm add -g < $location/seeds/npm
-				else
-					cecho "pnpm not installed. To use pnpm run ${bold}brew install pnpm${normal} or ${bold}curl -fsSL https://get.pnpm.io/install.sh | PNPM_VERSION=7.0.0-rc.5 sh -${normal}. Defaulting to NPM..." $yellow
-                    printf "\n"
-					xargs npm i -g < $location/seeds/npm
-				fi
-			else
-				xargs npm i -g < $location/seeds/npm
-			fi
-		fi
-		cecho "All $installPkg packages installed." $green
+		chmod +x propagation-station/setup/node.zsh
+		zsh propagation-station/setup/node.zsh
 
 		###############################################################################
 		# Setup Ruby and install Ruby gems #
 		###############################################################################
 
-		heading "Setting up Ruby and installing Ruby gems"
-
-		if test ! "$(which rbenv)"; then
-			cecho "Unable to install latest Ruby version. Please check your Homebrew installation and try again." $red
-			printf "\n"
-		else
-			step "Configuring Ruby..."
-			rubyVersion=$(rbenv install -l | grep -v - | tail -1)
-			rbenv install $rubyVersion
-
-            # Verify the state of your rbenv installation
-            wget -q https://github.com/rbenv/rbenv-installer/raw/HEAD/bin/rbenv-doctor -O- | bash
-
-			rbenv local $rubyVersion
-			rbenv global $rubyVersion
-		fi
-
-		# Choose between bundler install or gem install.
-		read -p "Would you like to install global Ruby gems with Bundler or with gem? b/g" rubyGems
-
-		if test ! "$(gem -v)"; then
-			cecho "Unable to install Ruby gems.\n" $red
-		else
-			step "Installing Ruby gems..."
-			if [[ $rubyGems =~ ^([bB][bundlerBundler]|[bB])$ ]];
-			then
-				if test ! "$(gem list bundler)"; then
-					gem install bundler
-				fi
-				cd $HOME
-				bundle init
-				for bundle in $(<$location/seeds/bundles); do
-					if test ! "$(bundle list | grep $bundle)"; then
-						installing "Installing $bundle"
-						bundle add $bundle >/dev/null
-						cecho "${bold}✓ $bundle gem installed${normal}" $green
-						printf "\n"
-					else
-						cecho "$bundle has already been installed. Skipped..." $dim
-						printf "\n"
-					fi
-				done
-				rbenv rehash
-				cd $location
-				printf "\n"
-				cecho "Successfully installed Ruby gems with Bundler." $green
-			else
-				for gem in $(<$location/seeds/gems); do
-					if test ! "$(gem list | grep $gem)"; then
-						installing "Installing $gem"
-						gem install $gem >/dev/null
-						cecho "${bold}✓ $gem gem installed${normal}" $green
-						printf "\n"
-					else
-						cecho "$gem has already been installed. Skipped..." $dim
-						printf "\n"
-					fi
-				done
-                rbenv rehash
-				cecho "Successfully installed Ruby gems." $green
-			fi
-
-			# Create folder for Laravel
-			if command -v jekyll &> /dev/null; then
-				step "Adding custom Jekyll directory..."
-				jekyll_dir_shortcut
-				cecho "Successfully add a custom Jekyll directory to the Sites directory." $green
-			fi
-		fi
-
-		##############################
-		# Fix PHP memory error #
-		##############################
-
-		heading "Fix PHP memory error"
-
-		step "Fixing PHP memory errors..."
-        # Resolve PHP Fatal error: Allowed memory size of 999999 bytes exhausted.
-		fix_php_memory
-
-		cecho "PHP memory error resolved" $green
-		printf "\n"
+		chmod +x propagation-station/setup/ruby.zsh
+		zsh propagation-station/setup/ruby.zsh
 
 		###############################################################################
-		# Install Composer and packages #
+		# PHP #
 		###############################################################################
 
-		heading "Installing Composer and packages"
-
-		read -p "Would you like to install Composer? Y/n" iComposer
-        if [[ iComposer =~ ^([yY])$ ]]; then
-            # Make sure the Brew PHP service has started.
-            brew services start php
-
-            if command -v composer &> /dev/null; then
-                cecho "Composer already installed. Skipping..." $dim
-            else
-                brew install composer
-                # Wait for the installation to finish
-                while ps | grep -q "[b]rew install composer"; do
-                    sleep 5
-                done
-
-                if command -v composer &> /dev/null; then
-                    cecho "Successfully installed Composer." $green
-                else
-                    cecho "Failed to install composer." $red
-                fi
-            fi
-
-            if command -v composer &> /dev/null; then
-                step "Installing Composer packages..."
-                for composer in $(<$location/seeds/composer); do
-                    if test ! "$(composer global info | grep $composer)"; then
-                        installing "Installing $composer"
-                        composer global require $composer >/dev/null
-                        composer config --no-interaction allow-plugins.$composer true
-                        cecho "${bold}✓ $composer package installed${normal}" $green
-                        printf "\n"
-                    else
-                        cecho "$composer has already been installed. Skipped..." $dim
-                        printf "\n"
-                    fi
-                done
-            else
-                cecho "Unable to install Composer packages. Please try again." $red
-            fi
-
-            # Park Laravel Valet
-            if command -v valet &> /dev/null; then
-                step "Setting Laravel Valet's default directory..."
-                cd $HOME/Sites
-                valet park
-                # Create folder for static sites
-                step "Adding custom directory for static sites..."
-                static_dir_shortcut
-                cecho "Successfully set Laravel Valet's default directory to the Sites directory and created custom static directory." $green
-            fi
-
-            # Create folder for Laravel
-            if command -v laravel &> /dev/null; then
-                step "Adding custom Laravel directory..."
-                laravel_dir_shortcut
-                cecho "Successfully add a custom Laravel directory to the Sites directory." $green
-            fi
-            cd $location
-        else
-            cecho "Composer install aborted. Skipping..." $dim
-            printf "\n"
-        fi
-
-		###############################################################################
-		# Install WP-CLI and packages #
-		###############################################################################
-
-		heading "Installing WP-CLI and packages"
-
-		if command -v wp &> /dev/null; then
-			cecho "WP-CLI already installed. Skipping..." $dim
-		else
-			read -p 'Would you like to install WP-CLI? Y/n' wordpresscli
-            if [[ $wordpresscli =~ ^([yY])$ ]];
-            then
-                brew install wp-cli
-
-				# Add WP standards with Composer
-				if command -v composer &> /dev/null; then
-					composer global require phpcompatibility/phpcompatibility-wp:*
-                    composer config --no-interaction allow-plugins.phpcompatibility/phpcompatibility-wp:* true
-					composer global require wp-coding-standards/wpcs
-                    composer config --no-interaction allow-plugins.wp-coding-standards/wpcs true
-				fi
-
-                # Add helpful aliases to .zshrc
-                zsh_wpcli_aliases
-
-				# Add custom directory for WordPress sites
-				wp_dir_shortcut
-
-                cecho "Successfully installed WP-CLI." $green
-            else
-                cecho "WP-CLI installation aborted. Skipping..." $dim
-            fi
-		fi
-
-        if [[ $wordpresscli =~ ^([yY])$ ]]; then
-            if command -v wp &> /dev/null; then
-                step "Installing WP-CLI packages..."
-                for wp in $(<$location/seeds/wpcli); do
-                    if test ! "$(wp package list | grep $wp)"; then
-                        installing "Installing $wp"
-                        wp package install $wp >/dev/null
-                        cecho "${bold}✓ $wp package installed${normal}" $green
-                        printf "\n"
-                    else
-                        cecho "$wp has already been installed. Skipped..." $dim
-                        printf "\n"
-                    fi
-                done
-                cecho "Successfully installed WP-CLI packages." $green
-            else
-                cecho "Unable to install packages. Please try again." $red
-            fi
-        else
-            cecho "WP-CLI installation aborted. Skipping package installations..." $dim
-        fi
-
-		###############################################################################
-		# Install Self-Assigned SSL #
-		###############################################################################
-
-		heading "Installing system SSL"
-
-		ssl_setup
+		chmod +x propagation-station/setup/php.zsh
+		zsh propagation-station/setup/php.zsh
 
 		###############################################################################
 		# Install Hyper.js packages and config #
@@ -911,141 +307,50 @@ case $choice in
 		fi
 
 		###############################################################################
-		# Install VSCode extensions #
+		# VSCode configuration #
 		###############################################################################
 
-		heading "Configuring VSCode"
-
-		if command -v code &> /dev/null; then
-            rm -rf $HOME/Library/Application\ Support/Code/User/settings.json
-            cp $location/seeds/vscode/settings.json $HOME/Library/Application\ Support/Code/User
-		fi
-
-        cecho "Successfully configured VSCode" $green
+		chmod +x propagation-station/setup/vscode.zsh
+		zsh propagation-station/setup/vscode.zsh
 
 		###############################################################################
 		# Install get_iplayer #
 		###############################################################################
 
-		heading "get_iplayer"
-
-        if command -v get_iplayer &> /dev/null; then
-            cecho "get_iplayer already installed. Skipping..." $dim
-        else
-            # Move into pottingshed/apps
-            if [[ ! -d "$location/pottingshed" ]]; then
-                mkdir "$location/pottingshed"
-            fi
-            cd "$location/pottingshed"
-
-            if [[ ! -d "$location/pottingshed/iplayer" ]]; then
-                mkdir "$location/pottingshed/iplayer"
-            fi
-            cd "$location/pottingshed/iplayer"
-
-            step "Installing get_iplayer..."
-            wget https://github.com/get-iplayer/get_iplayer_macos/releases/download/3.31.0/get_iplayer-3.31.0-macos-x86_64.pkg
-            sudo installer -pkg get_iplayer-3.31.0-macos-x86_64.pkg -target /Applications
-
-            cd $location
-
-            if command -v get_iplayer &> /dev/null; then
-                cecho "Successfully installed get_iplayer" $green
-            else
-                cecho "Failed to install get_iplayer" $red
-            fi
-
-            rm -rf $location/pottingshed/iplayer
-        fi
+		chmod +x propagation-station/setup/iplayer.zsh
+		zsh propagation-station/setup/iplayer.zsh
 
 		###############################################################################
 		# Install crunchy-cli #
 		###############################################################################
 
-		heading "crunchy-cli"
+		chmod +x propagation-station/setup/crunchy.zsh
+		zsh propagation-station/setup/crunchy.zsh
 
-        if command -v cargo &> /dev/null; then
-            cecho "Cargo already installed. Skipping..." $dim
-        else
-            step "Downloading and installing Cargo..."
-		    yes 1 | curl https://sh.rustup.rs -sSf | sh
+		###############################################################################
+		# Install custom keyboard #
+		###############################################################################
 
-            # Wait for the installation to finish
-            while ps | grep -q "[s]h.rustup.rs"; do
-                sleep 5
-            done
+		heading "Installing BritishLHash keyboard"
 
-            step "Activating Cargo..."
-            source "$HOME/.cargo/env"
-            printf "\n"
+		layouts="/Library/Keyboard\ Layouts"
+		sudo chflags norestricted "/Library/Keyboard\ Layouts/"
+		if [[ -f "$layouts/BritishLHash.keylayout" ]]; then
+			cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
+		else
+			cp $location/seeds/BritishLHash.keylayout $layouts/BritishLHash.keylayout
+			cecho "BritishLHash.keylayout installed successfully" $green
+		fi
 
-            if command -v cargo &> /dev/null; then
-                cecho "cargo installed successfully." $green
-                printf "\n\n"
-            else
-                cecho "Failed to install cargo." $red
-                printf "\n"
-				cecho "Retrying..." $dim
-                printf "\n"
-				brew install rust
+		###############################################################################
+		# Add last Fig configuration #
+		###############################################################################
 
-				# Wait for the installation to finish
-				while ps | grep -q "[b]rew install rust"; do
-					sleep 5
-				done
-
-				step "Activating Cargo..."
-				source "$HOME/.cargo/env"
-				printf "\n"
-				if command -v cargo &> /dev/null; then
-					cecho "cargo installed successfully." $green
-					printf "\n\n"
-				else
-					cecho "Failed to install cargo." $red
-               		printf "\n"
-					cecho "Skipping crunchy-cli installation..." $dim
-					printf "\n\n"
-				fi
-            fi
-        fi
-
-        if command -v cargo &> /dev/null; then
-            if command -v crunchy-cli &> /dev/null; then
-                cecho "crunchy-cli already installed. Skipping..." $dim
-                printf "\n\n"
-            else
-                step "Installing crunchy-cli..."
-                # Move into pottingshed/apps
-                if [[ ! -d "$location/pottingshed" ]]; then
-                    mkdir "$location/pottingshed"
-                fi
-                cd "$location/pottingshed"
-
-                if [[ ! -d "$location/pottingshed/crunchy" ]]; then
-                    mkdir "$location/pottingshed/crunchy"
-                fi
-                cd "$location/pottingshed/crunchy"
-
-                git clone https://github.com/crunchy-labs/crunchy-cli
-                cd crunchy-cli
-                cargo build --release
-                cargo install --force --path .
-
-                cd $location
-
-                # Check for crunchy-cli installation
-                if command -v crunchy-cli &> /dev/null; then
-                    cecho "Successfully installed crunchy-cli" $green
-                    printf "\n"
-                else
-                    cecho "Failed to install crunchy-cli." $red
-                    printf "\n\n"
-                fi
-
-                rm -rf $location/pottingshed/crunchy
-            fi
-        fi
-
+		if command -v fig; then
+			heading "Fig Configuring"
+			printf '\n\n# Fig post block. Keep at the bottom of this file.\n[[ -f "$HOME/.fig/shell/zshrc.post.zsh" ]] && builtin source "$HOME/.fig/shell/zshrc.post.zsh"\n\n' >> $HOME/.zshrc
+			cecho "Congratulations completed last part of Fig configuration" $green
+		fi
 
 		#############################################
 		# Set macOS Preferences - Borrowed from https://github.com/mathiasbynens/dotfiles/blob/master/.macos #
