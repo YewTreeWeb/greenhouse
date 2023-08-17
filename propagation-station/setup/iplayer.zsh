@@ -31,7 +31,11 @@ else
 
 	step "Installing get_iplayer..."
 	wget https://github.com/get-iplayer/get_iplayer_macos/releases/download/3.31.0/get_iplayer-3.31.0-macos-x86_64.pkg
-	sudo installer -pkg get_iplayer-3.31.0-macos-x86_64.pkg -target /Applications
+
+	target_path="/Applications"
+	[[ -d "$HOME/Application" ]] && target_path="$HOME/Applications"
+
+	sudo installer -pkg get_iplayer-3.31.0-macos-x86_64.pkg -target "$target_path"
 
 	cd $location
 

@@ -73,7 +73,6 @@ case $choice in
 		##############################
 		# Install dependencies #
 		##############################
-		sudo chmod 755 ~
 		heading "Installing System Dependencies…"
 
 		if [[ ! $internet ]];
@@ -111,6 +110,9 @@ case $choice in
 			sudo mkdir "$HOME/Developer"
 			sudo chown -R $(whoami):admin "$HOME/Developer"
 		fi
+
+		# Change Application permission
+		sudo chflags norestricted "/Applications"
 
 		# Check if xcode is installed. If not install it.
 		if xcode-select -p &> /dev/null; then
@@ -324,6 +326,21 @@ case $choice in
 
 		chmod +x propagation-station/setup/crunchy.zsh
 		zsh propagation-station/setup/crunchy.zsh
+
+		###############################################################################
+		# Install custom keyboard #
+		###############################################################################
+
+		heading "Installing BritishLHash keyboard"
+
+		layouts="/Library/Keyboard\ Layouts"
+		sudo chflags norestricted "/Library/Keyboard\ Layouts/"
+		if [[ -f "$layouts/BritishLHash.keylayout" ]]; then
+			cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
+		else
+			cp $location/seeds/BritishLHash.keylayout $layouts/BritishLHash.keylayout
+			cecho "BritishLHash.keylayout installed successfully" $green
+		fi
 
 		###############################################################################
 		# Add last Fig configuration #

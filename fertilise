@@ -157,20 +157,26 @@ EOF
 
 # Find PHP memory files and change the limit to a higher amount
 fix_php_memory() {
-    local phpVersion=$(php -v | grep ^PHP | cut -d' ' -f2)
-    local phpShortVersion=$(php -v | grep ^PHP | cut -d' ' -f2 | rev | cut -c 3- | rev)
+    local phpVersionInfo=$(php -v | grep ^PHP)
+    local phpVersion=$(echo "$phpVersionInfo" | cut -d' ' -f2)
+    local phpShortVersion=$(echo "$phpVersion" | rev | cut -c 3- | rev)
 
-    if [[ -d "/usr/local/etc/php/$phpVersion/" ]]; then
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/php.ini
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini
+    if [[ -d "/usr/local/etc/php/$phpVersion/" || -d "/usr/local/etc/php/$phpShortVersion/" ]]; then
+        find_php_ini="/usr/local/etc/php/$phpVersion/php.ini"
+        find_php_mem_limits_ini="/usr/local/etc/php/$phpVersion/conf.d/php-memory-limits.ini"
+
+        if [ ! -d "$find_php_ini" ]; then
+            find_php_ini="/usr/local/etc/php/$phpShortVersion/php.ini"
+            find_php_mem_limits_ini="/usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini"
+        fi
+
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" "$find_php_ini"
+        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" "$find_php_mem_limits_ini"
+
+        brew services restart php
+    else
+        echo "PHP configuration directories not found."
     fi
-
-    if [[ -d "/usr/local/etc/php/$phpShortVersion/" ]]; then
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/php.ini
-        sed -i "" -e "s/memory_limit = 128M/memory_limit = 1000M/g" /usr/local/etc/php/$phpShortVersion/conf.d/php-memory-limits.ini
-    fi
-
-    brew services restart php
 }
 
 # Install and setup ZSH completions
@@ -218,6 +224,7 @@ install_zsh_dependecies() {
     # Check if zsh_plugins exists.
     if [[ ! -d "$HOME/.zsh_plugins/" ]]; then
         mkdir "$HOME/.zsh_plugins"
+		sudo chown -R $(whoami):admin "$HOME/.zsh_plugins"
     fi
     cd "$HOME/.zsh_plugins"
 
@@ -341,6 +348,7 @@ wp_dir_shortcut() {
 # Create folder for WordPress sites
 if [[ ! -d "$HOME/Sites/Wordpress" ]]; then
 	sudo mkdir $HOME/Sites/Wordpress
+	sudo chown -R $(whoami):admin "$HOME/Sites/Wordpress"
 fi
 
 if grep -q 'wordpress' $shellProfile; then
@@ -358,6 +366,7 @@ laravel_dir_shortcut() {
 # Create folder for Laravel sites
 if [[ ! -d "$HOME/Sites/Laravel" ]]; then
 	sudo mkdir $HOME/Sites/Laravel
+	sudo chown -R $(whoami):admin "$HOME/Sites/Laravel"
 fi
 
 if grep -q 'lara' $shellProfile; then
@@ -375,6 +384,7 @@ static_dir_shortcut() {
 # Create folder for static sites
 if [[ ! -d "$HOME/Sites/Static" ]]; then
 	sudo mkdir $HOME/Sites/Static
+	sudo chown -R $(whoami):admin "$HOME/Sites/Static"
 fi
 
 if grep -q 'static' $shellProfile; then
@@ -392,6 +402,7 @@ jekyll_dir_shortcut() {
 # Create folder for Jekyll sites
 if [[ ! -d "$HOME/Sites/Jekyll" ]]; then
 	sudo mkdir $HOME/Sites/Jekyll
+	sudo chown -R $(whoami):admin "$HOME/Sites/Jekyll"
 fi
 
 if grep -q 'hyde' $shellProfile; then

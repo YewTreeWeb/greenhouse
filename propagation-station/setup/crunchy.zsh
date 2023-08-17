@@ -46,7 +46,6 @@ else
 		done
 
 		step "Activating Cargo..."
-		source "$HOME/.cargo/env"
 		printf "\n"
 		if command -v cargo &> /dev/null; then
 			cecho "cargo installed successfully." $green
