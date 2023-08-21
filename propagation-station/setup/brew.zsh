@@ -89,7 +89,7 @@ if [[ -e $location/seeds/Brewfile ]]; then
 
 		if [[ $whichShopifyCli == 'cli' ]]; then
 			brew install shopify-cli
-			if command -v shopify-cli &> /dev/null; then
+			if brew list shopify-cli &> /dev/null; then
 				cecho "Shopify CLI successfully installed" $green
 			else
 				cecho "Failed to install Shopify CLI via Homebrew" $red
@@ -97,7 +97,7 @@ if [[ -e $location/seeds/Brewfile ]]; then
 			printf "\n"
 		elif [[ $whichShopifyCli == "themekit" ]]; then
 			brew install themekit
-			if command -v themekit &> /dev/null; then
+			if brew list themekit &> /dev/null; then
 				cecho "Theme Kit successfully installed" $green
 			else
 				cecho "Failed to install Theme Kit via Homebrew" $red
@@ -106,12 +106,12 @@ if [[ -e $location/seeds/Brewfile ]]; then
 		elif [[ $whichShopifyCli == "both" ]]; then
 			brew install shopify-cli
 			brew install themekit
-			if command -v shopify-cli  &> /dev/null; then
+			if brew list shopify-cli  &> /dev/null; then
 				cecho "Shopify CLI successfully installed" $green
 			else
 				cecho "Failed to install Shopify CLI via Homebrew" $red
 			fi
-			if command -v themekit  &> /dev/null; then
+			if brew list themekit  &> /dev/null; then
 				cecho "Themekit successfully installed" $green
 			else
 				cecho "Failed to install Themekit via Homebrew" $red
@@ -130,6 +130,8 @@ if [[ -e $location/seeds/Brewfile ]]; then
 
 		# Run a Homebrew cleanup.
 		step "Cleaning up Homebrew..."
+        brew untap homebrew/core
+        brew untap homebrew/cask
 		brew cleanup
 		brew cleanup -s
 		cd $location

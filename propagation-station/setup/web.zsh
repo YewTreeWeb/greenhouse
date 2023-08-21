@@ -15,8 +15,7 @@ fi
 
 heading "Installing apps from the web"
 
-# Check if Composer is already installed.
-# Check if restore folder exists
+# Check if pottingshed directory has been created.
 # Move into pottingshed/apps
 if [[ ! -d "$location/pottingshed" ]]; then
 	mkdir "$location/pottingshed"
