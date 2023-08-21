@@ -40,7 +40,8 @@ else
 fi
 
 step "Installing packages..."
-read -p "Would you like to use yarn, pnpm or npm? y/p/n" installPkg
+echo -n "Would you like to use yarn, pnpm or npm? y/p/n"
+read installPkg
 
 if [[ -e $location/seeds/npm ]]; then
 	if [[ $installPkg =~ ^([yY])$ ]]; then

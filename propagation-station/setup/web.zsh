@@ -29,7 +29,8 @@ cd "$location/pottingshed/apps"
 
 if [[ ! -f "$HOME/Applications/Popcorn-Time.app" ]];
 then
-	read -p "Would you like to install Popcorn Time? Y/n" popcorn
+	echo -n "Would you like to install Popcorn Time? Y/n"
+	read popcorn
 	if [[ $popcorn =~ ^([yY])$ ]];
 	then
 		step "Downloading PopcornTime..."
@@ -46,7 +47,8 @@ fi
 
 if [[ ! -f "/Applications/Amphetamine Enhancer.app" ]];
 then
-	read -p "Would you like to download Amphetamine Enhancer? Y/n" amphetamine
+	echo -n "Would you like to download Amphetamine Enhancer? Y/n"
+	read amphetamine
 	if [[ $amphetamine =~ ^([yY])$ ]];
 	then
 		step "Downloading File..."
@@ -63,7 +65,8 @@ fi
 
 if [[ ! -f "/Applications/FileZilla.app" ]];
 then
-	read -p "Would you like to download FileZilla? Y/n" filezilla
+	echo -n "Would you like to download FileZilla? Y/n"
+	read filezilla
 	if [[ $filezilla =~ ^([yY])$ ]];
 	then
 		step "Downloading File..."

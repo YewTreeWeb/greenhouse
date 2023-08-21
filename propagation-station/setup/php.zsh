@@ -28,7 +28,8 @@ printf "\n"
 
 heading "Installing Composer and packages"
 
-read -p "Would you like to install Composer? Y/n" iComposer
+echo -n "Would you like to install Composer? Y/n"
+read iComposer
 if [[ iComposer =~ ^([yY])$ ]]; then
 	# Make sure the Brew PHP service has started.
 	brew services start php
@@ -103,7 +104,8 @@ heading "Installing WP-CLI and packages"
 if command -v wp &> /dev/null; then
 	cecho "WP-CLI already installed. Skipping..." $dim
 else
-	read -p 'Would you like to install WP-CLI? Y/n' wordpresscli
+	echo -n "Would you like to install WP-CLI? Y/n"
+	read wordpresscli
 	if [[ $wordpresscli =~ ^([yY])$ ]];
 	then
 		brew install wp-cli

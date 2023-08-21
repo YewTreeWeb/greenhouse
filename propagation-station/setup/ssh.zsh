@@ -27,7 +27,8 @@ if [ -f $HOME/.ssh/id_rsa ]; then
 else
 	cd $HOME/.ssh
 	step "Creating key and adding to agent."
-	read -p 'Input email for ssh key: ' sshEmail
+	echo -n "Input email for ssh key: "
+	read sshEmail
 	ssh-keygen -t rsa -b 4096 -C "$sshEmail"  # will prompt for password
 	eval "$(ssh-agent -s)"
 	cd $location
