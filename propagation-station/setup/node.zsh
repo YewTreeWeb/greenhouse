@@ -40,7 +40,7 @@ else
 fi
 
 step "Installing packages..."
-echo -n "Would you like to use yarn, pnpm or npm? y/p/n"
+echo -n "Would you like to use yarn, pnpm, bun or npm? y/p/b/n"
 read installPkg
 
 if [[ -e $location/seeds/npm ]]; then
@@ -71,6 +71,17 @@ if [[ -e $location/seeds/npm ]]; then
 			xargs pnpm add -g < $location/seeds/npm
 		else
 			cecho "pnpm not installed. To use pnpm run ${bold}brew install pnpm${normal} or ${bold}curl -fsSL https://get.pnpm.io/install.sh | PNPM_VERSION=7.0.0-rc.5 sh -${normal}. Defaulting to NPM..." $yellow
+			printf "\n"
+			xargs npm i -g < $location/seeds/npm
+		fi
+	elif [[ $installPkg =~ ^([bB])$ ]]; then
+		if brew list bun &> /dev/null; then
+			step "Using Bun as global package manager"
+			step "Updating pnpm to latest version..."
+			brew update bun
+			xargs bun add -g < $location/seeds/npm
+		else
+			cecho "Bun not installed. To use Bun run ${bold}brew install bun${normal} or ${bold}curl -fsSL https://bun.sh/install | bash${normal}. Defaulting to NPM..." $yellow
 			printf "\n"
 			xargs npm i -g < $location/seeds/npm
 		fi

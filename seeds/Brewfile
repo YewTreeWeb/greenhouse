@@ -12,6 +12,7 @@ tap "universal-ctags/universal-ctags"
 tap "mklement0/ttab", "https://github.com/mklement0/ttab.git"
 tap "sass/sass"
 tap "shopify/shopify"
+tap "oven-sh/bun"
 
 ## Cask dependencies
 brew "mas"
@@ -24,6 +25,7 @@ brew "zsh"
 ## Brews
 ## Don't forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
 brew "brotli"
+brew "bun"
 brew "coreutils"
 brew "curl"
 brew "ffmpeg"
