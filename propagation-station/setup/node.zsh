@@ -26,8 +26,8 @@ printf "\n\n"
 step "Installing latest Node & LTS Node..."
 nvm install node
 nvm install --lts
-nvm use --lts
-nvm alias default lts/*
+nvm use node
+nvm alias default node
 
 step "Updating NPM..."
 npm i -g npm@latest
