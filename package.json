@@ -1,0 +1,30 @@
+{
+  "name": "greenhouse",
+  "version": "2.5.0",
+  "description": "A Bash and Node CLI tool to help you with setting up your Mac and keeping it up-to-date.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@9.1.1+sha1.09ada6cd05003e0ced25fb716f9fda4063ec2e3b",
+  "bin": {
+    "greenhouse": "./bin/run.js"
+  },
+  "oclif": {
+    "bin": "greenhouse",
+    "commands": "./dist/commands",
+    "dirname": "greenhouse",
+    "topicSeparator": ":"
+  },
+  "dependencies": {
+    "@oclif/core": "^4.0.17",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18",
+    "ts-node": "^10.9.2"
+  }
+}
