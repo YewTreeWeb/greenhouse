@@ -119,20 +119,20 @@ case $choice in
 			cecho "Xcode already installed. Skipping..." $dim
 		else
 			step "Installing Xcode..."
-            # Install Xcode Command Line Tools
-            xcode-select --install
-			# Wait for the installation to finish (this can take some time)
-            while ! xcode-select -p &> /dev/null; do
-                sleep 5
-            done
-            if [ $? -eq 0 ]; then
-			    cecho "Xcode successfully installed." $green
-            fi
+      # Install Xcode Command Line Tools
+      xcode-select --install
+      # Wait for the installation to finish (this can take some time)
+      while ! xcode-select -p &> /dev/null; do
+          sleep 5
+      done
+      if [ $? -eq 0 ]; then
+        cecho "Xcode successfully installed." $green
+      fi
 		fi
 
 		# Check for Brew installation.
 		if command -v brew &> /dev/null; then
-            cecho "Homebrew already installed. Skipping..." $dim
+      cecho "Homebrew already installed. Skipping..." $dim
 		else
 			step "Installing Homebrew..."
             # Install Homebrew
@@ -158,7 +158,7 @@ case $choice in
             fi
 		fi
 
-        # Check the architecture using the arch command
+    # Check the architecture using the arch command
 		# Get the process's interpreter
 		interpreter=$(ps -p $$ -o comm=)
         if [[ "$(arch)" == "arm64" || "$interpreter" == *"Rosetta"* ]]; then
@@ -176,7 +176,7 @@ case $choice in
 		# Make sure system is running the latest Homebrew
 		printf "Updating Homebrew..."
 		brew update
-        printf "\n"
+    printf "\n"
 
 		##############################
 		# Installing zsh environment #
@@ -224,7 +224,7 @@ case $choice in
 		sudo chmod +x propagation-station/setup/ssh.zsh
 		zsh propagation-station/setup/ssh.zsh
 
-        ##############################
+    ##############################
 		# Add git user config data #
 		##############################
 
@@ -238,7 +238,7 @@ case $choice in
 		sudo chmod +x propagation-station/setup/brew.zsh
 		zsh propagation-station/setup/brew.zsh
 
-        #############################################
+    #############################################
 		# Add ssh-key to GitHub via api
 		# Reference new-computer github account
 		#############################################
@@ -246,11 +246,11 @@ case $choice in
 		sudo chmod +x propagation-station/setup/github.zsh
 		zsh propagation-station/setup/github.zsh
 
-        #############################################
+    #############################################
 		# Install Alfred or Raycast
 		#############################################
 
-        sudo chmod +x propagation-station/setup/alfred-raycast.zsh
+    sudo chmod +x propagation-station/setup/alfred-raycast.zsh
 		zsh propagation-station/setup/alfred-raycast.zsh
 
 		###############################################################################
@@ -333,13 +333,21 @@ case $choice in
 
 		heading "Installing BritishLHash keyboard"
 
-		layouts="/Library/Keyboard\ Layouts"
+		globalLibrary="/Library/Keyboard\ Layouts"
+		userLibrary="$HOME/Library/Keyboard\ Layouts/"
 		sudo chflags norestricted "/Library/Keyboard\ Layouts/"
-		if [[ -f "$layouts/BritishLHash.keylayout" ]]; then
+
+		if [[ -f "$globalLibrary/BritishLHash.keylayout" ]]; then
 			cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
 		else
-			cp $location/seeds/BritishLHash.keylayout $layouts/BritishLHash.keylayout
-			cecho "BritishLHash.keylayout installed successfully" $green
+			sudo cp $location/seeds/BritishLHash.keylayout $globalLibrary
+		  cecho "BritishLHash.keylayout installed successfully in $globalLibrary" $green
+		fi
+		if [[ -f "$userLibrary/BritishLHash.keylayout" ]]; then
+			cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
+		else
+      cp $location/seeds/BritishLHash.keylayout $userLibrary
+		  cecho "BritishLHash.keylayout installed successfully in $userLibrary" $green
 		fi
 
 		###############################################################################

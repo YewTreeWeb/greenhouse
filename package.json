@@ -4,7 +4,8 @@
   "description": "A Bash and Node CLI tool to help you with setting up your Mac and keeping it up-to-date.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -13,18 +14,47 @@
   "bin": {
     "greenhouse": "./bin/run.js"
   },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "@oclif/core": "^4.0.17",
+    "@oclif/plugin-help": "^6.2.7",
+    "@oclif/plugin-plugins": "^5.3.9",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "@oclif/test": "^4.0.7",
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^18",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "chai": "^5.1.1",
+    "eslint": "^9.8.0",
+    "eslint-config-oclif": "^5.2.0",
+    "eslint-config-oclif-typescript": "^3.1.8",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.7",
+    "mocha": "^10.7.0",
+    "prettier": "^3.3.3",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.6.3",
+    "typescript": "^5.5.4"
+  },
   "oclif": {
     "bin": "greenhouse",
     "commands": "./dist/commands",
     "dirname": "greenhouse",
-    "topicSeparator": ":"
-  },
-  "dependencies": {
-    "@oclif/core": "^4.0.17",
-    "js-yaml": "^4.1.0"
-  },
-  "devDependencies": {
-    "@types/node": "^18",
-    "ts-node": "^10.9.2"
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-plugins"
+    ],
+    "topicSeparator": " ",
+    "topics": {
+      "hello": {
+        "description": "Say hello to the world and others"
+      }
+    }
   }
 }

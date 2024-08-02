@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "importHelpers": true,
+    "module": "commonjs",
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": false,
+    "target": "es2019",
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "dist/*",
+    "bin/*",
+    ".vscode/*",
+    ".github/*",
+    ".git/*",
+    "node_modules",
+    "src/seeds/**/*",
+    "src/propagation/**/*",
+    ".husky/*",
+    "fertilise",
+    "greenhouse"
+  ]
+}

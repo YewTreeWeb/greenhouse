@@ -1,0 +1,13 @@
+dist/*
+bin/*
+.vscode/*
+.github/*
+node_modules
+pnpm-lock.yaml
+package.json
+src/seeds/*
+src/propagation/*
+fertilise
+greenhouse
+.husky/*
+.git/*
