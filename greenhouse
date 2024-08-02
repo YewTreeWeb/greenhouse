@@ -333,13 +333,21 @@ case $choice in
 
 		heading "Installing BritishLHash keyboard"
 
-		layouts="/Library/Keyboard\ Layouts"
+		globalLibrary="/Library/Keyboard\ Layouts"
+		userLibrary="$HOME/Library/Keyboard\ Layouts/"
 		sudo chflags norestricted "/Library/Keyboard\ Layouts/"
-		if [[ -f "$layouts/BritishLHash.keylayout" ]]; then
+
+		if [[ -f "$globalLibrary/BritishLHash.keylayout" ]]; then
+		  cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
+		else
+		  sudo cp $location/seeds/BritishLHash.keylayout $globalLibrary
+		  cecho "BritishLHash.keylayout installed successfully in $globalLibrary" $green
+		fi
+		if [[ -f "$userLibrary/BritishLHash.keylayout" ]]; then
 			cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
 		else
-			cp $location/seeds/BritishLHash.keylayout $layouts/BritishLHash.keylayout
-			cecho "BritishLHash.keylayout installed successfully" $green
+          cp $location/seeds/BritishLHash.keylayout $userLibrary
+		  cecho "BritishLHash.keylayout installed successfully in $userLibrary" $green
 		fi
 
 		###############################################################################
