@@ -19,7 +19,8 @@ if [[ -e $location/seeds/Brewfile ]]; then
 	if command -v brew &> /dev/null; then
 		step "Installing Homebrew packages..."
 		# Check if user local Applications folder exists.
-		read -p "Would you like to install casks to a local Applications directory? Y/n " haveLocalApps
+		echo -n "Would you like to install casks to a local Applications directory? Y/n "
+		read haveLocalApps
 		if [[ $haveLocalApps =~ ^([yY])$ ]]; then
 			if [[ ! -d "$HOME/Applications" ]]; then
 				mkdir "$HOME/Applications"
@@ -58,7 +59,8 @@ if [[ -e $location/seeds/Brewfile ]]; then
 		brew bundle
 
 		# Install IconJar
-		read -p "Would you like to install IconJar? y/N" installIJ
+		echo -n "Would you like to install IconJar? y/N"
+		read installIJ
 		if [[ $installIJ =~ ^([yY])$ ]]; then
 				# Install iconjar and wait for installation
 			if ! brew list --cask iconjar &> /dev/null; then
@@ -85,11 +87,12 @@ if [[ -e $location/seeds/Brewfile ]]; then
 		# Install Shopify
 		cecho "Shopify CLI replaces Theme Kit for most Shopify theme development tasks. You should use Shopify CLI if you're working on Online Store 2.0 themes. You should use Theme Kit instead of Shopify CLI only if you're working on older themes or you have Theme Kit integrated into your existing theme development workflows." $dim
 		printf "\n"
-		read -p "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit/n" whichShopifyCli
+		echo -n "Would you like to install the Shopify CLI, Theme Kit or both? both/cli/themekit"
+		read whichShopifyCli
 
 		if [[ $whichShopifyCli == 'cli' ]]; then
 			brew install shopify-cli
-			if command -v shopify-cli &> /dev/null; then
+			if brew list shopify-cli &> /dev/null; then
 				cecho "Shopify CLI successfully installed" $green
 			else
 				cecho "Failed to install Shopify CLI via Homebrew" $red
@@ -97,7 +100,7 @@ if [[ -e $location/seeds/Brewfile ]]; then
 			printf "\n"
 		elif [[ $whichShopifyCli == "themekit" ]]; then
 			brew install themekit
-			if command -v themekit &> /dev/null; then
+			if brew list themekit &> /dev/null; then
 				cecho "Theme Kit successfully installed" $green
 			else
 				cecho "Failed to install Theme Kit via Homebrew" $red
@@ -106,12 +109,12 @@ if [[ -e $location/seeds/Brewfile ]]; then
 		elif [[ $whichShopifyCli == "both" ]]; then
 			brew install shopify-cli
 			brew install themekit
-			if command -v shopify-cli  &> /dev/null; then
+			if brew list shopify-cli  &> /dev/null; then
 				cecho "Shopify CLI successfully installed" $green
 			else
 				cecho "Failed to install Shopify CLI via Homebrew" $red
 			fi
-			if command -v themekit  &> /dev/null; then
+			if brew list themekit  &> /dev/null; then
 				cecho "Themekit successfully installed" $green
 			else
 				cecho "Failed to install Themekit via Homebrew" $red
@@ -130,6 +133,8 @@ if [[ -e $location/seeds/Brewfile ]]; then
 
 		# Run a Homebrew cleanup.
 		step "Cleaning up Homebrew..."
+        brew untap homebrew/core
+        brew untap homebrew/cask
 		brew cleanup
 		brew cleanup -s
 		cd $location

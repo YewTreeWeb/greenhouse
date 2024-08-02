@@ -14,7 +14,8 @@ fi
 #############################################
 
 heading "Install Alfred or Raycast"
-read -p "Would you like to install either Alfred or Raycast? alfred/raycast" installAR
+echo -n "Would you like to install either Alfred or Raycast? alfred/raycast"
+read installAR
 
 if [[ installAR == 'alfred' ]]; then
 	if brew list --cask alfred; then

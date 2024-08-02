@@ -26,8 +26,8 @@ printf "\n\n"
 step "Installing latest Node & LTS Node..."
 nvm install node
 nvm install --lts
-nvm use --lts
-nvm alias default lts/*
+nvm use node
+nvm alias default node
 
 step "Updating NPM..."
 npm i -g npm@latest
@@ -40,7 +40,8 @@ else
 fi
 
 step "Installing packages..."
-read -p "Would you like to use yarn, pnpm or npm? y/p/n" installPkg
+echo -n "Would you like to use yarn, pnpm, bun or npm? y/p/b/n"
+read installPkg
 
 if [[ -e $location/seeds/npm ]]; then
 	if [[ $installPkg =~ ^([yY])$ ]]; then
@@ -51,7 +52,7 @@ if [[ -e $location/seeds/npm ]]; then
 			source $HOME/.zshrc
 			step "Setting Yarn to latest version..."
 			yarn set version berry
-			brew update yarn
+			brew ugrade yarn
 			xargs yarn global add < $location/seeds/npm
 		else
 			cecho "Yarn not installed. To use Yarn run ${bold}brew install yarn${normal} or ${bold}curl -o- -L https://yarnpkg.com/install.sh | bash${normal}. Defaulting to NPM..." $yellow
@@ -66,10 +67,21 @@ if [[ -e $location/seeds/npm ]]; then
 			source $HOME/.zshrc
 
 			step "Updating pnpm to latest version..."
-			brew update pnpm
+			brew upgrade pnpm
 			xargs pnpm add -g < $location/seeds/npm
 		else
 			cecho "pnpm not installed. To use pnpm run ${bold}brew install pnpm${normal} or ${bold}curl -fsSL https://get.pnpm.io/install.sh | PNPM_VERSION=7.0.0-rc.5 sh -${normal}. Defaulting to NPM..." $yellow
+			printf "\n"
+			xargs npm i -g < $location/seeds/npm
+		fi
+	elif [[ $installPkg =~ ^([bB])$ ]]; then
+		if brew list bun &> /dev/null; then
+			step "Using Bun as global package manager"
+			step "Updating pnpm to latest version..."
+			brew upgrade bun
+			xargs bun add -g < $location/seeds/npm
+		else
+			cecho "Bun not installed. To use Bun run ${bold}brew install bun${normal} or ${bold}curl -fsSL https://bun.sh/install | bash${normal}. Defaulting to NPM..." $yellow
 			printf "\n"
 			xargs npm i -g < $location/seeds/npm
 		fi

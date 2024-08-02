@@ -15,7 +15,8 @@ fi
 #############################################
 
 heading "Adding ssh-key to GitHub (via api)..."
-read -p "Would you like to add your ssh key to Github? Y/n " useGithub
+echo -n "Would you like to add your ssh key to Github? Y/n "
+read useGithub
 
 if [[ $useGithub =~ ^([yY])$ ]]; then
 	cecho "Important! For this step, use a github personal token with the admin:public_key permission." $yellow
@@ -24,9 +25,12 @@ if [[ $useGithub =~ ^([yY])$ ]]; then
 	SSH_KEY=`cat $HOME/.ssh/id_rsa.pub`
 
 	for ((i=0; i<retries; i++)); do
-		read -p 'GitHub username: ' ghusername
-		read -p 'Machine name: ' ghtitle
-		read -sp 'GitHub personal token: ' ghtoken
+		echo "GitHub username: "
+		read ghusername
+		echo "Machine name: "
+		read ghtitle
+		echo "GitHub personal token: "
+		read ghtoken
 
 		gh_status_code=$(curl -o /dev/null -s -w "%{http_code}\n" -u "$ghusername:$ghtoken" -d '{"title":"'$ghtitle'","key":"'"$SSH_KEY"'"}' 'https://api.github.com/user/keys')
 

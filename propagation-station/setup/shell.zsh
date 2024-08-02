@@ -48,7 +48,9 @@ if command -v fig &> /dev/null; then
 else
 	# Check if ZSH is installed
 	if command -v zsh &> /dev/null; then
-		read -p "Would you like to have your system managed by Fig? y/n/both `cecho $'\nhint: Choose both if you want manual control as well as Fig control' $dim``printf $'\n\n> '`" useFig
+		echo -n "Would you like to have your system managed by Fig? y/n/both `cecho $'\nhint: Choose both if you want manual control as well as Fig control' $dim``printf $'\n\n> '`"
+		read useFig
+
 		if [[ $useFig == "both" || $useFig =~ ^([yY])$ ]]; then
 			brew install fig --cask
 		fi

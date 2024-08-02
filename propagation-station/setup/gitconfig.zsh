@@ -24,15 +24,19 @@ else
 fi
 
 step "Configuring gitconfig..."
-read -p "What username would you like to add to the gitconfig file? Default is your user account ." gitUser
+echo -n "What username would you like to add to the gitconfig file? Default is your user account ."
+read gitUser
 
-read -p "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. " gitEmail
+echo -n "Enter the email you would like to add to the gitconfig file? Default is the SSH email you set earlier. "
+read gitEmail
 
-read -p "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``printf $'\n> '` " gitBranchName
+echo -n "What would you like your default main branch to be called? Default will be master. `cecho $'\nhint: Names commonly chosen instead of 'master' are 'main', 'trunk' and 'development'. You can renamed via this command: git branch -m <name> at any time' $dim``printf $'\n> '` "
+read gitBranchName
 
-read -p "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``printf $'\n> '``cecho $'\nhint: Default will be pull.rebase false. You can renamed via this command: git config --global <pull-type> at any time.' $dim``printf $'\n> '` " gitPullRequest
-br=${gitBranchName:-master}
-pr=${gitPullRequest:-pull.rebase false}
+echo -n "What would you like your default pull request to be? Default will be merge. `cecho $'\nhint: git config pull.rebase false (merge), git config pull.rebase true (rebase), git config pull.ff only (fast-forward only).' $dim``printf $'\n> '``cecho $'\nhint: Default will be pull.rebase false. You can renamed via this command: git config --global <pull-type> at any time.' $dim``printf $'\n> '` "
+read gitPullRequest
+br="${gitBranchName:-master}"
+pr="${gitPullRequest:-pull.rebase false}"
 
 step "Adding Git config data..."
 git config --global user.name "${gitUser:-$USER}"

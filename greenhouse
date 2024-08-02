@@ -182,7 +182,7 @@ case $choice in
 		# Installing zsh environment #
 		##############################
 
-		chmod +x propagation-station/setup/shell.zsh
+		sudo chmod +x propagation-station/setup/shell.zsh
 		zsh propagation-station/setup/shell.zsh
 
 		##############################
@@ -221,21 +221,21 @@ case $choice in
 		# See: https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/
 		#############################################
 
-		chmod +x propagation-station/setup/ssh.zsh
+		sudo chmod +x propagation-station/setup/ssh.zsh
 		zsh propagation-station/setup/ssh.zsh
 
         ##############################
 		# Add git user config data #
 		##############################
 
-		chmod +x propagation-station/setup/gitconfig.zsh
+		sudo chmod +x propagation-station/setup/gitconfig.zsh
 		zsh propagation-station/setup/gitconfig.zsh
 
 		##############################
 		# Install Brews #
 		##############################
 
-		chmod +x propagation-station/setup/brew.zsh
+		sudo chmod +x propagation-station/setup/brew.zsh
 		zsh propagation-station/setup/brew.zsh
 
         #############################################
@@ -243,42 +243,42 @@ case $choice in
 		# Reference new-computer github account
 		#############################################
 
-		chmod +x propagation-station/setup/github.zsh
+		sudo chmod +x propagation-station/setup/github.zsh
 		zsh propagation-station/setup/github.zsh
 
         #############################################
 		# Install Alfred or Raycast
 		#############################################
 
-        chmod +x propagation-station/setup/alfred-raycast.zsh
+        sudo chmod +x propagation-station/setup/alfred-raycast.zsh
 		zsh propagation-station/setup/alfred-raycast.zsh
 
 		###############################################################################
 		# Install Apps from the web #
 		###############################################################################
 
-		chmod +x propagation-station/setup/web.zsh
+		sudo chmod +x propagation-station/setup/web.zsh
 		zsh propagation-station/setup/web.zsh
 
 		###############################################################################
 		# Install Node with NVM & NPM packages #
 		###############################################################################
 
-		chmod +x propagation-station/setup/node.zsh
+		sudo chmod +x propagation-station/setup/node.zsh
 		zsh propagation-station/setup/node.zsh
 
 		###############################################################################
 		# Setup Ruby and install Ruby gems #
 		###############################################################################
 
-		chmod +x propagation-station/setup/ruby.zsh
+		sudo chmod +x propagation-station/setup/ruby.zsh
 		zsh propagation-station/setup/ruby.zsh
 
 		###############################################################################
 		# PHP #
 		###############################################################################
 
-		chmod +x propagation-station/setup/php.zsh
+		sudo chmod +x propagation-station/setup/php.zsh
 		zsh propagation-station/setup/php.zsh
 
 		###############################################################################
@@ -310,21 +310,21 @@ case $choice in
 		# VSCode configuration #
 		###############################################################################
 
-		chmod +x propagation-station/setup/vscode.zsh
+		sudo chmod +x propagation-station/setup/vscode.zsh
 		zsh propagation-station/setup/vscode.zsh
 
 		###############################################################################
 		# Install get_iplayer #
 		###############################################################################
 
-		chmod +x propagation-station/setup/iplayer.zsh
+		sudo chmod +x propagation-station/setup/iplayer.zsh
 		zsh propagation-station/setup/iplayer.zsh
 
 		###############################################################################
 		# Install crunchy-cli #
 		###############################################################################
 
-		chmod +x propagation-station/setup/crunchy.zsh
+		sudo chmod +x propagation-station/setup/crunchy.zsh
 		zsh propagation-station/setup/crunchy.zsh
 
 		###############################################################################
@@ -333,13 +333,21 @@ case $choice in
 
 		heading "Installing BritishLHash keyboard"
 
-		layouts="/Library/Keyboard\ Layouts"
+		globalLibrary="/Library/Keyboard\ Layouts"
+		userLibrary="$HOME/Library/Keyboard\ Layouts/"
 		sudo chflags norestricted "/Library/Keyboard\ Layouts/"
-		if [[ -f "$layouts/BritishLHash.keylayout" ]]; then
+
+		if [[ -f "$globalLibrary/BritishLHash.keylayout" ]]; then
+		  cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
+		else
+		  sudo cp $location/seeds/BritishLHash.keylayout $globalLibrary
+		  cecho "BritishLHash.keylayout installed successfully in $globalLibrary" $green
+		fi
+		if [[ -f "$userLibrary/BritishLHash.keylayout" ]]; then
 			cecho "BritishLHash.keylayout has already been installed. Skipping..." $dim
 		else
-			cp $location/seeds/BritishLHash.keylayout $layouts/BritishLHash.keylayout
-			cecho "BritishLHash.keylayout installed successfully" $green
+          cp $location/seeds/BritishLHash.keylayout $userLibrary
+		  cecho "BritishLHash.keylayout installed successfully in $userLibrary" $green
 		fi
 
 		###############################################################################

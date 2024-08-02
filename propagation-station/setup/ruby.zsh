@@ -31,7 +31,8 @@ else
 fi
 
 # Choose between bundler install or gem install.
-read -p "Would you like to install global Ruby gems with Bundler or with gem? b/g" rubyGems
+echo -n  "Would you like to install global Ruby gems with Bundler or with gem? b/g"
+read rubyGems
 
 if test ! "$(gem -v)"; then
 	cecho "Unable to install Ruby gems.\n" $red
